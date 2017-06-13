@@ -31,7 +31,7 @@ For bug fixes, comments or further development please contact: mreich@posteo.de.
 `devtools::install_github("marcianito/gravityInf")`
 
 4. load packages: 
-`library(UmbrellaEffect)`
+`library(UmbrellaEffect)`; 
 `library(gravityInf)`
 
 ## Dependencies
@@ -46,7 +46,7 @@ For bug fixes, comments or further development please contact: mreich@posteo.de.
 in debian install using: 
 `apt-get update && apt-get install libssl-dev`
 
-Warning: depending on your model discretization, in both space and time, it might be
+**Warning**: depending on your model discretization, in both space and time, it might be
 necessary to run this analysis on a cluster (or have at least a high performance machine).
 
 ### Data-wise

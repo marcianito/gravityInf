@@ -1,0 +1,28 @@
+Package: gravityInf
+Title: Infiltration (sprinkling) and continious realtive gravity measurements
+Version: 0.9
+Authors@R: person("Marvin", "Reich", email = "mreich@posteo.de", role = c("aut", "cre"))
+Description: Set up, model and evaluate infiltration in a certain area around a (relative) gravimeter, 
+             measuring continiously throughout the infiltration time.
+             The simplified hydrological modeling in combination with gravity data indicates the dominant infiltration
+             dynamics, valid for the area of interest.
+             This procedure was published in the article: "ARTICLE".
+Depends: R (>= 3.3.1)
+Imports: dplyr,
+         raster,
+         zoo,
+         xts,
+         reshape2,
+         ggplot2,
+         viridis,
+         gstat,
+         ptinpoly,
+         devtools,
+         UmbrellaEffect,
+         hydroGOF,
+         doParralel,
+         foreach
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
