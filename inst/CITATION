@@ -1,0 +1,21 @@
+citHeader("To cite UmbrellaEffect in publications use:")
+
+citEntry(entry = "Article",
+  title        = " XX ",
+  author       = personList(as.person("Marvin Reich"),
+                   as.person("Michal Mikolay"),
+                   as.person("Theresa Blume"),
+                   as.person("Andreas Güntner")),
+  journal      = "Geophysical Journal International",
+  year         = "2017",
+  volume       = "?",
+  number       = "?",
+  pages        = "??-??",
+  url          = "??",
+
+  textVersion  =
+  paste("Garrett Grolemund, Hadley Wickham (2011).",
+        "Dates and Times Made Easy with lubridate.",
+        "Journal of Statistical Software, 40(3), 1-25.",
+        "URL http://www.jstatsoft.org/v40/i03/.")
+)
