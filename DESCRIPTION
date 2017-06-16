@@ -21,7 +21,12 @@ Imports: dplyr,
          UmbrellaEffect,
          hydroGOF,
          doParralel,
-         foreach
+         foreach,
+         spacetime,
+         sp,
+         automap,
+         ppso,
+         data.table
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
