@@ -166,9 +166,15 @@ Zeros_border_density = 6
 # this is optional and can be left empty if no automatized reduction is desired
 gravityObservations_input_file = "SG030_TS_1month.tsf"
 
-##########################################
+## Information for optimization algorithm
+# use inverse or conversion mode
+# if set to FALSE, a single conversion run of the infiltration model is exectuted
+# in this case, infiltration parameters supplied in 'starting values' are used as model input
+inverse = TRUE
+# number of iterations of the algorithm
+model_runs = 5
+
 ## set infiltration model parameters
-##########################################
 
 # ## single
 # # scen = "macro"
@@ -288,15 +294,17 @@ message("Removing SG pillar from gravity component grid..")
 
 gravity_component_grid3d = correct_SGpillar(
             gcompgrid = gravity_component_grid3d,
-
+            # Pillar_x = NA,
+            # Pillar_y = NA,
+            # Pillar_z = NA,
+            correct_radius = thres_radius,
+            correct_depth = thres_depth,
+            SG_X = SG_x,
+            SG_Y = SG_y #,
+            # grid_discretization = NA
 )
 
-if(circular){
-  gcomp_irrigation_domain = dplyr::mutate(gcomp_irrigation_domain, gcomp = ifelse((x - igrav_x)^2 + (y - igrav_y)^2 < thres_radius & zgrid <= thres_depth,0,gcomp))
-}else{
-}
-
-
+# save grid
 save(gravity_component_grid3d, file = paste0(dir_output, "gravity_component_grid3d.rData"))
 
 message("done.")
@@ -403,148 +411,67 @@ save(Intensity_distribution_interpolated, file = paste0(dir_output, "Intensity_d
 
 message("done.")
 #########################################
-## 
+## Run infiltration model
 #########################################
-
-#########################################
-## 
-#########################################
-
-##########################################
-
-
-
-##########################################
-## Run optimization algorithm
-##########################################
-print("Run optimization algorithm..")
-print("..this will take some time..")
 
 # combine data for config file
 configfile = data.frame(dir_input,
                         dir_output,
                         precip_time,
                         water_vol_min,
-                        IntensityDistribution_file,
+                        "Intensity_distribution_interpolated.rData",
                         "gravity_component_grid3d.rData",
                         gravity_observations_file,
                         mb_permitted_error,
                         stringsAsFactors=FALSE)
 save(configfile, file=paste0(dir_output, "configfile.rdata"))
 
-## run model within optimization algorithm
-# for changing optimization function additional parameters, please see ?optim_dds
-opt_result = run_model(
-            dtheta_macro_min = dtheta_macro_min,
-            dtheta_macro_max = dtheta_macro_max,
-            dtheta_macro2_min = dtheta_macro2_min,
-            dtheta_macro2_max = dtheta_macro2_max,
-            dtheta_pipe_min = dtheta_pipe_min,
-            dtheta_pipe_max = dtheta_pipe_max,
-            mdepth_min = mdepth_min,
-            mdepth_max = mdepth_max,
-            mdepth2_min = mdepth2_min,
-            mdepth2_max = mdepth2_max,
-            latflow_fac_min = latflow_fac_min,
-            latflow_fac_max = latflow_fac_max,
-            dtheta_macro_start = dtheta_macro_start,
-            dtheta_macro2_start = dtheta_macro2_start,
-            mdepth_start = mdepth_start,
-            mdepth2_start = mdepth2_start,
-            dtheta_pipe_start = dtheta_pipe_start,
-            latflow_fac_start = latflow_fac_start,
-            macopores = use_macro,
-            macro2 = two_macro,
-            ...
-)
+## run model in conversion or inversion mode
+print("Running infiltration model..")
 
-# prepare model input data and parameter boundaries
-if(macropores){
-  if(macro2){
-    # combine input parameters
-    param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_macro2_min, dtheta_pipe_min, mdepth_min, mdepth2_min, latflow_fac_min),
-                          maximum = c(dtheta_macro_max, dtheta_macro2_max, dtheta_pipe_max, mdepth_max, mdepth2_max, latflow_fac_max))
-    # combine start parameter values
-    param_startvalue = c(dtheta_macro_start, dtheta_macro2_start, dtheta_pipe_start, mdepth_start, mdepth2_start, latflow_fac_start)
-    # set name of model to use
-    model = "inf_model_3d_2macro"
-  }else{
-    # combine input parameters
-    param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_pipe_min, mdepth_min, latflow_fac_min),
-                          maximum = c(dtheta_macro_max, dtheta_pipe_max, mdepth_max, latflow_fac_max))
-    # combine start parameter values
-    param_startvalue = c(dtheta_macro_start, dtheta_pipe_start, mdepth_start, latflow_fac_start)
-    # set name of model to use
-    model = "inf_model_3d_macro"
-  }
+if(!inverse){
+  print("Model is run in conversion mode.")
+  model_result = run_model_conversion(
+
+  )
+
 }else{
-  # combine input parameters
-  param_bounds = data.frame(minimum = c(dtheta_pipe_min, mdepth_min, latflow_fac_min),
-                        maximum = c(dtheta_pipe_max, mdepth_max, latflow_fac_max))
-  # combine start parameter values
-  param_startvalue = c(dtheta_pipe_start, mdepth_start, latflow_fac_start)
-  # set name of model to use
-  model = "inf_model_3d_single"
+## Run optimization algorithm
+  print("Model is run in inversion mode.")
+  print("Run optimization algorithm..")
+  print("..this will take some time..")
+  
+  ## run model within optimization algorithm
+  # for changing optimization function additional parameters, please see ?optim_dds
+  model_result = run_model_inversion(
+              dtheta_macro_min = dtheta_macro_min,
+              dtheta_macro_max = dtheta_macro_max,
+              dtheta_macro2_min = dtheta_macro2_min,
+              dtheta_macro2_max = dtheta_macro2_max,
+              dtheta_pipe_min = dtheta_pipe_min,
+              dtheta_pipe_max = dtheta_pipe_max,
+              mdepth_min = mdepth_min,
+              mdepth_max = mdepth_max,
+              mdepth2_min = mdepth2_min,
+              mdepth2_max = mdepth2_max,
+              latflow_fac_min = latflow_fac_min,
+              latflow_fac_max = latflow_fac_max,
+              dtheta_macro_start = dtheta_macro_start,
+              dtheta_macro2_start = dtheta_macro2_start,
+              mdepth_start = mdepth_start,
+              mdepth2_start = mdepth2_start,
+              dtheta_pipe_start = dtheta_pipe_start,
+              latflow_fac_start = latflow_fac_start,
+              macopores = use_macro,
+              macro2 = two_macro,
+              n_iterations = model_runs,
+              output_dir = dir_output
+  )
+  print("Finished optimization.")
+# end of inversion / conversion mode infiltration model runs
 }
 
-# set counting parameter
-# this is used for naming figures and files for individiual model runs within the optimization routine
-n_param = 1 
-# n_param <<- n_param
-# param_bounds <<- param_bounds
-# param_startvalue <<- param_startvalue
-
-# set working directory
-# setwd(dir_output)
-
-## run optimization
-opt_result = optim_dds(
-    # objective_function = inf_model_3d_2macro, #set model to use, according to input parameters supplied
-    objective_function = get(model), #set model to use, according to input parameters supplied
-    number_of_parameters = length(param_bounds[,1]),
-    number_of_particles =  1,
-    max_number_function_calls= 200,
-    r=0.2,
-    abstol = -Inf,
-    reltol = -Inf,
-    max_wait_iterations=50,
-    parameter_bounds = param_bounds,
-    initial_estimates = param_startvalue,
-    lhc_init=FALSE,
-    do_plot = NULL,
-    wait_for_keystroke = FALSE,
-    # logfile=  ppso_log,
-    # projectfile = "projectfile_to_resume",
-    load_projectfile = "try",
-    break_file=NULL,
-    plot_progress=FALSE,
-    tryCall=FALSE)
-
-return(opt_result)
-
-
-
-##########################################
-## save results
-##########################################
-print("combine and save results and run information")
-# scenario information
-model_info = list(dir_input = dir_input,
-                     dir_output = dir_output,
-                     duration = precip_time,
-                     total_water_volume = water_vol_min,
-                     water_distribution_file = IntensityDistribution_file,
-                     gravity_component_grid_file = "gravity_component_grid3d.rData",
-                     gravity_observations_file = gravity_observations_file,
-                     permitted_massbalance_error = mb_permitted_error)
-
-# combine optimization with scenario information
-stats = cbind(model_info, opt_result)
-
-save(stats, file=paste0(dir_output, "OptModel_stats.rdata"))
-write.table(stats, file=paste0(dir_output, "OptModel_stats.csv"), sep="\t", dec=".", row.names = F, col.names = T, append = T)
-
-print("Finished optimization.")
+print("done.")
 #########################################
 ## Plot: Gravity reponse (observed and modeled)
 #########################################
@@ -552,50 +479,12 @@ print("Finished optimization.")
 if(plot_data){
   message("Plotting modeled and observed gravity signal..")
 
-
-load(file=paste0(dir_scen, "modOptimized_2macro/gmod_Irrigation_macropiping_27.rdata"))
-
-# load igrav time series in same period
-load(file=paste0(dir_output, "gravity/igrav_raw_data_exp3.rdata"))
-# set same column name for joining datasets
-colnames(igrav_exp3)[2] = "gmod"
-igrav_exp3_cor = mutate(igrav_exp3, gmod = gmod - min(gmod))
-
-igrav_timesteps = data.frame(Timestep = 1:length(igrav_exp3_cor$gmod[-1]), gmod = igrav_exp3_cor$gmod[-1])
-
-## create measurement uncertainty of +- 10 %
-# this will be due to unprecise estimated total water mass used in experiment
-gsignal_irrigation_macropiping_over = gsignal_irrigation_macropiping
-gsignal_irrigation_macropiping_over$gmod = gsignal_irrigation_macropiping_over$gmod * 1.1
-gsignal_irrigation_macropiping_under = gsignal_irrigation_macropiping
-gsignal_irrigation_macropiping_under$gmod = gsignal_irrigation_macropiping_under$gmod * 0.9 
-
-## combine datasets
-gmod = rbind(
-         # cbind(igrav_exp3_cor, Scenario="iGrav (observed)"),
-         cbind(igrav_timesteps, Scenario="Observed gravity response"),
-	     cbind(gsignal_irrigation_macropiping, Scenario="Model: Macropores & By-pass flow"),
-	     cbind(gsignal_irrigation_macropiping_over, Scenario="uncertainty"),
-	     cbind(gsignal_irrigation_macropiping_under, Scenario="uncertainty")
-         )
-gmod$Scenario = factor(gmod$Scenario, levels=c("uncertainty","Observed gravity response", "Model: Macropores & By-pass flow"))
-
-# png(file=paste0(dir_output, "gravity/plots/Irrigation_complexScenarios_ItensityIdeal_dtheta005_mitiGrav.png"), width=1500, height=1000, res=250)
-# png(file=paste0(dir_output, "gravity/plots/Irrigation_combinedScenarios_macropipe_pipedepth150cm_macrodepth50cm_DynamiDdelays_dtehta010_IReal.png"), width=1500, height=1000, res=250)
-png(file=paste0(dir_praesi, "Irrigation_combinedExtScenarios.png"), width=1500, height=1800, res=250, bg="transparent")
-ggplot(gmod, aes(x=Timestep, y=gmod, colour=Scenario)) + geom_line(size=1.5) + 
-	ylab("Gravity [nm/s²]") + xlab("Time since start of experiment [min]") +
-    scale_color_manual(values = c("lightgrey","red","blue"), breaks=c("Observed gravity response", "Model: Macropores & By-pass flow")) + 
-    figure_style + theme(
-     legend.position = "bottom",
-     legend.title = element_blank(),
-	 legend.text=element_text(size=18),
-	 panel.background = element_rect(fill="transparent"),
-     panel.grid.major = element_line(colour = "black", linetype = "dotted")
-     ) +
-    guides(colour = guide_legend(nrow = 2))
-dev.off()
-
+  plot_gravity_responses(
+              gravity_obs = gravityObservations_input_file,
+              gravity_mod = "gravity_response_modeled.rData",
+              input_dir = dir_input,
+              output_dir = dir_output
+  )
   message("done.")
 }else{
   message("No plotting desired.")
@@ -608,113 +497,12 @@ dev.off()
 if(plot_data){
   message("Plotting 2d transect of modeled soil moisture data..")
 
-
-filename = "Irrigation_combiExt_macropiping_161"
-modeloutput = load(file=paste0(dir_input, filename,".rdata"))
-
-# ERT time steps
-ERT_exp3 = load(file=paste0(dir_output, "ERT/ERT_profB_exp3_spatiallyAdjusted.rdata"))
-ERT_exp3 = load(file=paste0(dir_output, "ERT/ERT_profB_exp3_spatiallyAdjusted_neg.rdata"))
-ERT_exp3 = get(ERT_exp3)
-ERT_exp3$datetime = as.POSIXct(trunc(ERT_exp3$datetime, units = "mins"))
-
-data_obs_ts = data.frame(datetime = unique(ERT_exp3$datetime), Timestep = unique(ERT_exp3$Timestep))
-# limit to first XX timesteps
-# 1 timestep is approx. 1 hour
-# ts = 0 is reference state BEFORE experiment
-tslimit = 6
-data_obs_ts = dplyr::filter(data_obs_ts, Timestep <= tslimit) %>%
-              dplyr::mutate(Timestep = Timestep * 60) #multiply with 60 minutes
-
-## load sensor coordinates
-# in Gauss-Krueger
-sensors_coords = read.table(file=paste0(dir_input_std, "DEM/sensor_coords_GK.csv"), sep=",", dec =".", header=T)
-ERT_coords = dplyr::filter(sensors_coords, name =="ERT_B") %>%
-             dplyr::filter(distance >= (max(distance) - 8)) %>%
-             dplyr::select(-org_fid, -id) %>%
-             dplyr::rename(x = distance)
-
-SM_coords = dplyr::filter(sensors_coords, name =="SM_interpolated") %>%
-            dplyr::filter(distance <= 8) %>%
-            dplyr::mutate(x = rev(distance)) %>%
-            dplyr::select(-org_fid, -id, -distance)
-# save
-save(ERT_coords, file=paste0(dir_output,"irrigation/modeloutput_profiles/ERT_exp3_withGKcoords.rdata"))
-save(SM_coords, file=paste0(dir_output,"irrigation/modeloutput_profiles/SM_exp3_withGKcoords.rdata"))
-
-#########################################
-## limit data to ERT and SM observation time steps
-#########################################
-# modeloutput = dplyr::inner_join(data_obs_ts, get(modeloutput))
-modeloutput = dplyr::inner_join(data_obs_ts, modeloutput)
-
-#########################################
-## round X and Y data (coordinates) in order to join datasets
-#########################################
-modeloutput_round = dplyr::mutate(modeloutput, x = round(x,1)) %>%
-         dplyr::mutate(y = round(y,1))
-
-ERT_coords_round = dplyr::rename(ERT_coords, xrel = x) %>%
-        dplyr::mutate(x = round(X,1)) %>%
-        dplyr::mutate(y = round(Y,1)) %>%
-        dplyr::select(-X,-Y)
-
-SM_coords_round = dplyr::rename(SM_coords, xrel = x) %>%
-        dplyr::mutate(x = round(X,1)) %>%
-        dplyr::mutate(y = round(Y,1)) %>%
-        dplyr::select(-X,-Y)
-
-#########################################
-## limit data to SM profile
-#########################################
-
-modeloutput_SMprofile = dplyr::left_join(SM_coords_round, modeloutput_round)
-
-#########################################
-## limit data to ERT profile
-#########################################
-
-modeloutput_ERTprofile = dplyr::left_join(ERT_coords_round, modeloutput_round)
-
-# ERT: first 300 cm
-model_exp3_300cm = dplyr::filter(modeloutput_ERTprofile, zgrid <= 3.0)
-# SM: first 40 cm
-    scale_x_continuous(breaks=c(10,12,14,16,18)) +
-    scale_fill_gradientn(breaks = c(0.01,0.05,0.1,0.2), colours=rev(viridis(7)), na.value="red") +
-	# scale_fill_gradientn(colours=rev(viridis(7)), na.value="red") +
-    facet_grid(Timestep ~ ., scale="free") +
-	#ylim(3.1,0) + 
-    # ylab("Depth [m]") + xlab("Profile length [m]") + 
-    ylab("Depth [m]") + xlab("Profile x [m]") + 
-    # labs(fill = expression(Delta * "Resistivity [µS/cm]")) +
-    labs(fill = expression(Delta * "Soil moisture [%VWC]")) +
-    ggtitle("Model output: Soil moisture") +
-    figure_style + 
-    theme(legend.position ="bottom",
-	      legend.text=element_text(size=17),
-	      legend.title=element_text(size=19),
-	      panel.grid.major = element_line(colour = "black", linetype = "dotted"),
-	      panel.grid.minor = element_line(colour = "black", linetype = "dotted"))
-
-model_profiles_SM.gg = ggplot(model_exp3_40cm, aes(x=xrel, y=zgrid)) +
-    geom_tile(aes(fill = value, width = .25)) + 
-    scale_y_continuous(breaks=c(.4,.2,0), trans="reverse") + 
-    scale_x_continuous(breaks=c(0,2,4,6,8)) +
-    scale_fill_gradientn(breaks = c(0.01,0.05,0.1,0.2), colours=rev(viridis(7)), na.value="red") +
-    facet_grid(Timestep ~ ., scale="free") +
-	#ylim(3.1,0) + 
-    # ylab("Depth [m]") + xlab("Profile length [m]") + 
-    ylab("Depth [m]") + xlab("Profile x [m]") + 
-    labs(fill = expression(Delta * "Soil moisture [%VWC]")) +
-    ggtitle("Model output: Soil moisture") +
-    figure_style + 
-    theme(legend.position ="bottom",
-	      legend.text=element_text(size=17),
-	      legend.title=element_text(size=19),
-	      panel.grid.major = element_line(colour = "black", linetype = "dotted"),
-	      panel.grid.minor = element_line(colour = "black", linetype = "dotted"))
-
-
+  plot_transect_2d(
+              gravity_mod = "gravity_response_modeled.rData",
+              plot_ts = ?,
+              input_dir = dir_input,
+              output_dir = dir_output
+  )
   message("done.")
 }else{
   message("No plotting desired.")
