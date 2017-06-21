@@ -50,7 +50,7 @@ correct_SGpillar = function(
     if(circular){
       # circular shape
       gcomp_grid3d = dplyr::mutate(gravity_comp3d,
-            gcomp = ifelse((x - SG_X)^2 + (y - SG_Y)^2 < correct_radius & Depth <= correct_depth, 0, gcomp))
+            gcomp = ifelse((x - SG_X)^2 + (y - SG_Y)^2 < correct_radius & Depth >= correct_depth, 0, gcomp))
     }else{
       # rectangular shape
       # construct faces

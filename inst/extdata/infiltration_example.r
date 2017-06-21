@@ -89,6 +89,7 @@ plot_data = TRUE
 SG_x = 0
 SG_y = 0
 SG_Z = 0
+SG_SensorHeight = 1.5 
 # UTM coordinate system
 SG_x = 4564041.87 
 SG_y = 5445662.88 
@@ -98,10 +99,8 @@ SG_SensorHeight = 1.5
 ## Model domain
 # in [m]
 # local grid or UTM, depending on the coordinates of the SG !
-spinklingArea_x = c(-5, 5) # min, max
-spinklingArea_y = c(-5, 5) # min, max
-Building_x = c(-5, 5) # min, max
-Building_y = c(-5, 5) # min, max
+sprinklingArea_x = c(-7.5, 7.5) # min, max
+sprinklingArea_y = c(-7.5, 7.5) # min, max
 # grid3d_depth = c(-3, 0) # min, max
 # UTM
 spinklingArea_x = c(SG_x - 3, SG_x + 3) # min, max
@@ -287,7 +286,7 @@ gravity_component_grid3d = gravity_comp_grid(
             grid_discretization = grid3d_discr,
             grid_depth = grid3d_depth,
             range_coords_x = sprinklingArea_x,
-            range_corrds_y = sprinklingArea_y
+            range_coords_y = sprinklingArea_y
 )
 
 message("done.")
@@ -310,6 +309,16 @@ gravity_component_grid3d = correct_SGpillar(
 
 # save grid
 save(gravity_component_grid3d, file = paste0(dir_output, "gravity_component_grid3d.rData"))
+
+if(plot_data){
+  message("Plotting transect of gravity component grid and saving plot to output directory..")
+  plot_gcomp_grid(
+                  grid_input = gravity_component_grid3d,
+                  yloc = SG_y,
+                  output_dir = dir_output,
+                  grid_discretization = grid3d_discr
+)
+}
 
 message("done.")
 #########################################
