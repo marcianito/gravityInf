@@ -86,8 +86,8 @@ plot_data = TRUE
 ## Gravimeter location
 # in [m]
 # relativ, local coordinate sytem
-SG_x = 3
-SG_y = 3
+SG_x = 0
+SG_y = 0
 SG_Z = 0
 # UTM coordinate system
 SG_x = 4564041.87 
@@ -98,8 +98,10 @@ SG_SensorHeight = 1.5
 ## Model domain
 # in [m]
 # local grid or UTM, depending on the coordinates of the SG !
-spinklingArea_x = c(0, 6) # min, max
-spinklingArea_y = c(0, 6) # min, max
+spinklingArea_x = c(-5, 5) # min, max
+spinklingArea_y = c(-5, 5) # min, max
+Building_x = c(-5, 5) # min, max
+Building_y = c(-5, 5) # min, max
 # grid3d_depth = c(-3, 0) # min, max
 # UTM
 spinklingArea_x = c(SG_x - 3, SG_x + 3) # min, max
@@ -126,19 +128,19 @@ Building_SGpillar_z = c(SG_Z - 1, SG_Z) # min, max
 # this is independent of local grid or UTM coordinates
 # in [m]
 thres_radius = 0.5
-thres_depth = 1.2
+thres_depth = -1.2
 
 ## Input files
 ## general settings
 # in case using .csv data, the special information has to supplied, in which columns the spatial information is stored
-# the settings below are valid for 1d data files
+# the settings below are valid for 2d data files
 # in the vector, the order is: x, y, z
-spatial_col = c(NA, NA, 2)
+spatial_col = c(1, 2, NA)
 # in all cases, a column has to be specified, containing the observation data
 # columns of observation data (in .csv and .rData files)
 data_col = 3
 # columns of observation data (in .tsf files)
-data_tsf = 13 
+data_tsf = 7 
 # if the .csv has special characters for separating columns
 # or decimal places, etc.
 # the have to be EXPLICITLY specified in the read_data-function
@@ -154,7 +156,7 @@ DEM_input_file = ""
 DEM_input_file = "WE_UP_TO_300m_05m.asc"
 
 ## Water intensity distribution file
-IntensityDistribution_file = "FILENAME"
+IntensityDistribution_file = "waterIntensity_measured.csv"
 # which interpolation algorithm should be used:
 # inverse distance weight (IDW) or kriging (krige)
 interpolation_method = "IDW"
@@ -164,7 +166,7 @@ Zeros_border_density = 6
 
 ## Observed gravity data time series
 # this is optional and can be left empty if no automatized reduction is desired
-gravityObservations_input_file = "SG030_TS_1month.tsf"
+gravityObservations_input_file = "iGrav006_obs_60sec.tsf"
 
 ## Information for optimization algorithm
 # use inverse or conversion mode
@@ -283,7 +285,9 @@ gravity_component_grid3d = gravity_comp_grid(
             surface = surface_grid,
             SG_coordinates = SGloc,
             grid_discretization = grid3d_discr,
-            grid_depth = grid3d_depth
+            grid_depth = grid3d_depth,
+            range_coords_x = sprinklingArea_x,
+            range_corrds_y = sprinklingArea_y
 )
 
 message("done.")
@@ -293,7 +297,7 @@ message("done.")
 message("Removing SG pillar from gravity component grid..")
 
 gravity_component_grid3d = correct_SGpillar(
-            gcompgrid = gravity_component_grid3d,
+            gravity_comp3d = gravity_component_grid3d,
             # Pillar_x = NA,
             # Pillar_y = NA,
             # Pillar_z = NA,
@@ -313,100 +317,16 @@ message("done.")
 #########################################
 message("Creating grid for water intensity distribution..")
 
-create_WaterIntensityGrid(
+Intensity_distribution_interpolated = create_WaterIntensityGrid(
             input_file = IntensityDistribution_file,
             intp_method = interpolation_method,
-            surface_grid = surface_grid,
+            surface = gravity_component_grid3d,
             zerosBorder = Zeros_border_density,
-            output_dir = dir_output,
-            ...
+            input_dir = dir_input, 
+            output_dir = dir_output
 )
 
-
-
-# load file: IntensityDistribution_file as Iintensities
-
-
-Iintensities_addZeros = select(Iintensities, xrel, yrel, total_weight_dif)
-# number of "zeros" per border-side
-nzeros_border = 6
-Zeros = data.frame(xrel = c(seq(min(grid_surface$xrel),max(grid_surface$xrel),length.out=nzeros_border),seq(min(grid_surface$xrel),max(grid_surface$xrel),length.out=nzeros_border), rep(min(grid_surface$xrel),nzeros_border),rep(max(grid_surface$xrel),nzeros_border)),
-                   yrel = c(rep(min(grid_surface$yrel),nzeros_border),rep(max(grid_surface$yrel),nzeros_border),seq(min(grid_surface$yrel),max(grid_surface$yrel),length.out=nzeros_border),seq(min(grid_surface$yrel),max(grid_surface$yrel),length.out=nzeros_border)),
-                   total_weight_dif = 0
-                   )
-Iintensities_Zeros = rbind(Iintensities_addZeros, Zeros)
-
-## IWD
-# # without extra added Zeros
-# idw.gstat = gstat(formula = total_weight_dif ~ 1, locations = ~ xrel + yrel, data = Iintensities, nmax = 10, set = list(idp = 2))
-# with extra Zeros (as stützstellen at the borders of the irrigation area)
-idw.gstat = gstat(formula = total_weight_dif ~ 1, locations = ~ xrel + yrel, data = Iintensities_Zeros, nmax = 10, set = list(idp = 2))
-#idw.gstat = gstat(formula = dataraw ~ 1, locations = ~ x + y + Depth, data = data_in, nmax = 10, nmin=3, maxdist=1.1, set = list(idp = 2))
-data_interpolated <- predict(idw.gstat, grid_surface)[,-4]
-colnames(data_interpolated)[3] = "weight_intp"
-
-## calculate intensities per min out of total_weight_dif
-# Becher_radius = 0.035 #[m]
-num_cell = length(grid_surface$x)
-TotalWaterOnBecher = sum(data_interpolated$weight_intp, na.rm=T)
-weight_avg = TotalWaterOnBecher / num_cell
-# intensity as relatin of:
-# cell weight / average cell weight
-Iintensities_interpolated_IDW = dplyr::mutate(data_interpolated, intensity = weight_intp / weight_avg)
-
-# check sum of weights after interpolation
-# should be equal to number of cells
-sum(Iintensities_interpolated_IDW$intensity, na.rm=T)
-
-## kriging
-
-# load irrigation intensities
-load(file="../../output/irrigation/Iintesities_spatialPointDistribution.rdata")
-
-grid_surface_krige = cbind(grid_surface, dummy=2, fummy=5)
-gridded(grid_surface_krige) = ~xrel + yrel
-coordinates(Iintensities)= ~xrel + yrel
-#hydrus domain grid
-vario = autofitVariogram(total_weight_dif ~ 1, Iintensities,
-	      model = c("Sph", "Exp", "Gau", "Ste", "Mat"),
-              #model = c("Mat"),
-	      verbose=T)
-# load irrigation intensities WITH Zeros added
-# one has to be used for variogram (normal raw data)
-# one has to be used for modeling (normal data + Zero data)
-load(file="../../output/irrigation/Iintesities_spatialPointDistribution_withZeros.rdata")
-coordinates(Iintensities_Zeros)= ~xrel + yrel
-#interpolate data to new grid
-data_pred = krige(total_weight_dif ~ 1, Iintensities_Zeros, grid_surface_krige, vario$var_model)
-
-#####
-var <- variogram(total_weight_dif~1,data=Iintensities,assumeRegular=F,na.omit=T) 
-vario_krige = fit.variogram(var, vario$var_model)
-vario_krige = vgm(340677.1, "Mat", 12.29943, 1.7)
-
-data_pred = krige(total_weight_dif ~ 1, Iintensities_Zeros, grid_surface_krige, vario_krige)
-data_pred = krige(total_weight_dif ~ 1, Iintensities, grid_surface_krige, vario_krige)
-plot(data_pred)
-####
-
-# construct data.frame
-data_interpolated = data.frame(xrel = coordinates(data_pred)[,1], yrel = coordinates(data_pred)[,2], weight_intp = data_pred$var1.pred)
-
-## calculate intensities per min out of total_weight_dif
-Becher_radius = 0.035 #[m]
-TotalWaterOnBecher = sum(data_interpolated$weight_intp, na.rm=T)
-
-# set negative values to 0 (zero)
-data_interpolated$weight_intp[which(data_interpolated$weight_intp < 0)] = 0
-# check sum of weights after interpolation
-sum(data_interpolated$weight_intp, na.rm=T)
-
-# intensity in mm/min
-Iintensities_interpolated_krige = mutate(data_interpolated, intensity = weight_intp/1000 / (pi*Becher_radius^2)) %>%
-		mutate(intensity_percent = weight_intp / TotalWaterOnBecher)
-
-
-# save data
+# save grid
 save(Intensity_distribution_interpolated, file = paste0(dir_output, "Intensity_distribution_interpolated.rData"))
 
 message("done.")
@@ -432,7 +352,15 @@ print("Running infiltration model..")
 if(!inverse){
   print("Model is run in conversion mode.")
   model_result = run_model_conversion(
-
+              dtheta_macro = dtheta_macro_start,
+              dtheta_macro2 = dtheta_macro2_start,
+              mdepth = mdepth_start,
+              mdepth2 = mdepth2_start,
+              dtheta_pipe = dtheta_pipe_start,
+              latflow_fac = latflow_fac_start,
+              macopores = use_macro,
+              macro2 = two_macro,
+              output_dir = dir_output
   )
 
 }else{
@@ -471,6 +399,10 @@ if(!inverse){
 # end of inversion / conversion mode infiltration model runs
 }
 
+# save model data (parameters in- and output)
+save(model_result, file=paste0(dir_output, "Model_stats.rdata"))
+write.table(model_result, file=paste0(dir_output, "Model_stats.csv"), sep="\t", dec=".", row.names = F, col.names = T, append = T)
+
 print("done.")
 #########################################
 ## Plot: Gravity reponse (observed and modeled)
@@ -498,7 +430,7 @@ if(plot_data){
   message("Plotting 2d transect of modeled soil moisture data..")
 
   plot_transect_2d(
-              gravity_mod = "gravity_response_modeled.rData",
+              soilmoisture_mod = "infiltration_model_output.rData",
               plot_ts = ?,
               input_dir = dir_input,
               output_dir = dir_output

@@ -3,7 +3,7 @@
 #' @description Plot a transect in 2d of the 3d modeled infiltration water distribution.
 #' One or more specific time steps of the total sprinkling experiment duration can be chosen.
 #'
-#' @param gravity_mod Character string with the filename of the modeled gravity response data.
+#' @param soilmoisture_mod Character string with the filename of the modeled soil moisture data.
 #' @param plot_ts Vector of one or more time stamps at which plotting is desired.
 #'  They have to be supplied in the unit "XX".
 #' @param input_dir Character string, containing the path to input file "gravity_obs".
@@ -17,7 +17,7 @@
 #' @examples missing
 
 plot_transect_2d = function(
-            gravity_mod = "gravity_response_modeled.rData",
+            soilmoisture_mod = "infiltration_model_output.rData",
             plot_ts,
             input_dir = dir_input,
             output_dir = dir_output,
@@ -26,15 +26,15 @@ plot_transect_2d = function(
     # input_dir = dir_input
 
     ## load modeled gravity response
-    g_mod_data = load(file = paste0(output_dir, gravity_mod))
-    gravity_mod_data = get(g_mod_data)
+    sm_mod_data = load(file = paste0(output_dir, soilmoisture_mod))
+    sm_mod_data = get(sm_mod_data)
 
     # limit data to desired plotting time steps
-    data_plot = dplyr::inner_join(plot_ts, gravity_mod_data)
+    data_plot = dplyr::inner_join(plot_ts, sm_mod_data)
     
     # limit data vertically
-    if(limit supplied){
-    data_plot = dplyr::filter(data_plot, zgrid <= ??)
+    if(limitsupplied){
+    data_plot = dplyr::filter(data_plot, zgrid <= XX)
     }
     
     transect_2d.gg = ggplot(data_plot, aes(x=xrel, y=zgrid)) +

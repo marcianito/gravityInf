@@ -35,6 +35,13 @@ run_model_conversion = function(
             output_dir, 
             ...
 ){
+  ## create necessary output directories
+  if(!file.exists(paste0(output_dir, "model_output"))){
+      dir.create(file.path(output_dir, "model_output"))
+      dir.create(file.path(output_dir, "model_output", "plots"))
+      dir.create(file.path(output_dir, "model_output", "raw"))
+  }
+
   # load config file for model input
   load(file=paste0(output_dir, "configfile.rdata"))
   dir_input = configfile$dir_input
@@ -92,9 +99,6 @@ run_model_conversion = function(
   
   # combine optimization with scenario information
   stats = cbind(model_info, conv_result)
-  
-  save(stats, file=paste0(dir_output, "Model_stats.rdata"))
-  write.table(stats, file=paste0(dir_output, "Model_stats.csv"), sep="\t", dec=".", row.names = F, col.names = T, append = T)
   
   # return model statistics and parameters
   return(stats)

@@ -39,6 +39,13 @@ run_model_inversion = function(
             output_dir, 
             ...
 ){
+    ## create necessary output directories
+    if(!file.exists(paste0(output_dir, "model_output"))){
+        dir.create(file.path(output_dir, "model_output"))
+        dir.create(file.path(output_dir, "model_output", "plots"))
+        dir.create(file.path(output_dir, "model_output", "raw"))
+    }
+
     # prepare model input data and parameter boundaries
     if(macropores){
       if(macro2){
@@ -122,9 +129,6 @@ run_model_inversion = function(
   
   # combine optimization with scenario information
   stats = cbind(model_info, opt_result)
-  
-  save(stats, file=paste0(dir_output, "OptModel_stats.rdata"))
-  write.table(stats, file=paste0(dir_output, "OptModel_stats.csv"), sep="\t", dec=".", row.names = F, col.names = T, append = T)
   
   # return model statistics and parameters
   return(stats)

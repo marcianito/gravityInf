@@ -18,7 +18,7 @@
 #' @examples missing
 
 correct_SGpillar = function(
-            gravity_gcomp3d,
+            gravity_comp3d,
             Pillar_x = NA,
             Pillar_y = NA,
             Pillar_z = NA,
@@ -49,8 +49,8 @@ correct_SGpillar = function(
 
     if(circular){
       # circular shape
-      gcomp_grid3d = dplyr::mutate(gravity_gcomp3d,
-            gcomp = ifelse((x - SG_X)^2 + (y - SG_Y)^2 < correct_radius & zgrid <= correct_depth, 0, gcomp))
+      gcomp_grid3d = dplyr::mutate(gravity_comp3d,
+            gcomp = ifelse((x - SG_X)^2 + (y - SG_Y)^2 < correct_radius & Depth <= correct_depth, 0, gcomp))
     }else{
       # rectangular shape
       # construct faces
@@ -74,7 +74,7 @@ correct_SGpillar = function(
       )
     
       # correct rectangular SG pillar
-      gcomp_grid3d = gravity_gcomp3d %>%
+      gcomp_grid3d = gravity_comp3d %>%
           dplyr::mutate(SGpillar = pip3d(vert_SGpillar, faces, as.matrix(gravity_gcomp3d[,1:3]))) %>%
           dplyr::mutate(gcomp = ifelse(SGpillar >= 0, 0, gcomp)) %>%
           dplyr::select(-SGpillar)
