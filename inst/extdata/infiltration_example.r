@@ -91,9 +91,9 @@ SG_y = 0
 SG_Z = 0
 SG_SensorHeight = 1.5 
 # UTM coordinate system
-SG_x = 4564041.87 
-SG_y = 5445662.88 
-SG_Z = 606.471
+SG_x = 4564082.00
+SG_y = 5445669.70
+SG_Z = 609.755
 SG_SensorHeight = 1.5 
 
 ## Model domain
@@ -103,8 +103,8 @@ sprinklingArea_x = c(-7.5, 7.5) # min, max
 sprinklingArea_y = c(-7.5, 7.5) # min, max
 # grid3d_depth = c(-3, 0) # min, max
 # UTM
-spinklingArea_x = c(SG_x - 3, SG_x + 3) # min, max
-spinklingArea_y = c(SG_y - 3, SG_y + 3) # min, max
+sprinklingArea_x = c(SG_x - 7.5, SG_x + 7.5) # min, max
+sprinklingArea_y = c(SG_y - 7.5, SG_y + 7.5) # min, max
 # grid3d_depth = c(SG_Z, SG_Z - 3) # min, max
 
 ## Model discretization
@@ -116,13 +116,13 @@ grid3d_depth = c(-3, 0) # min, max
 # please use same units as in DEM and model domain
 # if pillar has the structure of a rectangular pillar
 # local grid
-Building_SGpillar_x = c(2, 4) # min, max
-Building_SGpillar_y = c(2, 4) # min, max
-Building_SGpillar_z = c(-1, 0) # min, max
+Building_SGpillar_x = c(-1, 1) # min, max
+Building_SGpillar_y = c(-1, 1) # min, max
+Building_SGpillar_z = c(-1.2, 0) # min, max
 # UTM
 Building_SGpillar_x = c(SG_x - 1, SG_x + 1) # min, max
 Building_SGpillar_y = c(SG_y - 1, SG_y + 1) # min, max
-Building_SGpillar_z = c(SG_Z - 1, SG_Z) # min, max
+Building_SGpillar_z = c(SG_Z - 1.2, SG_Z) # min, max
 # if pillar has the structure of a cylinder
 # this is independent of local grid or UTM coordinates
 # in [m]
@@ -155,18 +155,19 @@ DEM_input_file = ""
 DEM_input_file = "WE_UP_TO_300m_05m.asc"
 
 ## Water intensity distribution file
-IntensityDistribution_file = "waterIntensity_measured.csv"
+# IntensityDistribution_file = "waterIntensity_measured.csv"
+IntensityDistribution_file = "waterIntensity_measured.rData"
 # which interpolation algorithm should be used:
 # inverse distance weight (IDW) or kriging (krige)
 interpolation_method = "IDW"
 # set percentage of how many zeros should be added at border / side of grid
 # if not desired, set to 0
-Zeros_border_density = 6
+Zeros_border_density = .2
 
 ## Observed gravity data time series
 # this is optional and can be left empty if no automatized reduction is desired
 gravityObservations_input_file = "iGrav006_obs_60sec.tsf"
-
+# gravityObservations_input_file = "iGrav006_obs_60sec.rData"
 ## Information for optimization algorithm
 # use inverse or conversion mode
 # if set to FALSE, a single conversion run of the infiltration model is exectuted
@@ -274,6 +275,13 @@ surface_grid = surface_grid(
             # , sep = "a", etc.
 )
 
+if(plot_data){
+  if(surface_grid == NULL) break
+  ggplot(surface_grid, 
+         aes(x=x, y=y)) + 
+         geom_tile(aes(fill = z))
+}
+
 message("done.")
 #########################################
 # Generate 3d gravity component grid 
@@ -288,6 +296,13 @@ gravity_component_grid3d = gravity_comp_grid(
             range_coords_x = sprinklingArea_x,
             range_coords_y = sprinklingArea_y
 )
+
+if(plot_data){
+  ggplot(gravity_component_grid3d, 
+         aes(x=x, y=y)) + 
+         geom_tile(aes(fill = z))
+         # geom_point(aes(color = z))
+}
 
 message("done.")
 #########################################
@@ -331,9 +346,20 @@ Intensity_distribution_interpolated = create_WaterIntensityGrid(
             intp_method = interpolation_method,
             surface = gravity_component_grid3d,
             zerosBorder = Zeros_border_density,
+            spat_col = spatial_col,
+            dat_col = data_col,
+            UTM_gridcenter_x = SG_x,
+            UTM_gridcenter_y = SG_y,
             input_dir = dir_input, 
             output_dir = dir_output
 )
+
+if(plot_data){
+  ggplot(Intensity_distribution_interpolated, 
+         aes(x=x, y=y)) + 
+         geom_tile(aes(fill = intensity))
+         # geom_point(aes(color = intensity))
+}
 
 # save grid
 save(Intensity_distribution_interpolated, file = paste0(dir_output, "Intensity_distribution_interpolated.rData"))
@@ -462,6 +488,10 @@ message("")
 
 ##########
 ### prepare input TS data
+
+# tt = load(file=paste0(dir_input, "igrav_raw_data_exp3.rdata"))
+# igrav_exp3
+# write.table(intensities_measured, file=paste0(dir_output, IntensityDistribution_file), row.names=F)
 
 # sm = read_data(soilMoisture_input_file, dir_input)
 # sm_ts = unique(sm$datetime)

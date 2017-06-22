@@ -14,37 +14,42 @@
 create_WaterIntensityGrid = function(
             input_file,
             intp_method,
-            grid_surface,
+            surface,
             zerosBorder,
             spat_col,
             dat_col,
+            UTM_gridcenter_x = NA,
+            UTM_gridcenter_y = NA,
             input_dir = dir_input, 
             output_dir = dir_output,
             ...
 ){
 
-            input_file = "waterIntensity_measured.csv"
-            input_file = "waterIntensity_measured.rData"
-            input_file = "Iintesities_spatialPointDistribution.rdata"
-            tt = load(file = paste0(dir_output, input_file))
-            Iintensities = get(tt)
-            intensities_measured = data.frame(x = Iintensities$x,
-                                              y = Iintensities$y,
-                                              weight = Iintensities$total_weight_dif)
-            save(intensities_measured, file = paste0(dir_output, "waterIntensity_measured.rData"))
-            intensities_raw = intensities_measured
-            colnames(intensities_raw)[3] = "value"
-            intp_method = "IDW"
-            surface = gravity_component_grid3d
-            zerosBorder = .5
-            spat_col = spatial_col
-            dat_col = data_col
-            input_dir = dir_input
-            output_dir = dir_output
+    # input_file = "waterIntensity_measured.csv"
+    # input_file = "waterIntensity_measured.rData"
+    # intp_method = "IDW"
+    # surface = gravity_component_grid3d
+    # zerosBorder = .5
+    # spat_col = spatial_col
+    # dat_col = data_col
+    # UTM_gridcenter_x = SG_x
+    # UTM_gridcenter_y = SG_y
+    # input_dir = dir_input
+    # output_dir = dir_output
 
     # load measured (or set up) water intensity distribution data
     intensities_raw = read_data(input_file, input_dir, spat_col, dat_col)
-    
+    # if UTM coordinates are used,
+    # the UTM center coordinates of the grid have to be ADDED
+    # to the relative intensity grid
+    # !!
+    # !! add option to ALSO supply intensity grid in UTM
+    # !!
+    if(!is.na(UTM_gridcenter_x) & !is.na(UTM_gridcenter_y)){
+    intensities_raw$x = intensities_raw$x + UTM_gridcenter_x
+    intensities_raw$y = intensities_raw$y + UTM_gridcenter_y
+    }
+
     # get surface grid out of gravity component grid
     grid_surface = surface %>%
                 dplyr::filter(Depth == max(surface$Depth)) %>%
@@ -54,7 +59,7 @@ create_WaterIntensityGrid = function(
     numPoints_side = min(c(length(unique(grid_surface$x)), length(unique(grid_surface$y))))
     # number of points per side
     nzeros_border = round(numPoints_side * zerosBorder,0)
-    nzeros_border = 7 
+    # nzeros_border = 7 
     
     Zeros = data.frame(x = c(seq(min(grid_surface$x),max(grid_surface$x),length.out=nzeros_border),seq(min(grid_surface$x),max(grid_surface$x),length.out=nzeros_border), rep(min(grid_surface$x),nzeros_border),rep(max(grid_surface$x),nzeros_border)),
                        y = c(rep(min(grid_surface$y),nzeros_border),rep(max(grid_surface$y),nzeros_border),seq(min(grid_surface$y),max(grid_surface$y),length.out=nzeros_border),seq(min(grid_surface$y),max(grid_surface$y),length.out=nzeros_border)),
@@ -64,7 +69,7 @@ create_WaterIntensityGrid = function(
     # combine subsetted intensity data and artificial added zeros
     intensities_Zeros = rbind(intensities_addZeros, Zeros)
     # plot
-    ggplot(intensities_Zeros, aes(x=x,y=y, color=value)) + geom_point()
+    # ggplot(intensities_Zeros, aes(x=x,y=y, color=value)) + geom_point()
 
     # decide interpolation method
     switch(intp_method,
@@ -103,9 +108,6 @@ create_WaterIntensityGrid = function(
             # check sum of weights after interpolation
             # should be equal to number of cells
             # sum(intensities_grid_interpolated$intensity, na.rm=T)
-
-
-
            },
            linear = {
 data_interpolated = approx(intensities_Zeros$x, intensities_Zeros$y, grid_surface, method="linear")
