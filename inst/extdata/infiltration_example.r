@@ -109,7 +109,7 @@ sprinklingArea_y = c(SG_y - 7.5, SG_y + 7.5) # min, max
 
 ## Model discretization
 # in [m]
-grid3d_discr = data.frame(x = .5, y = .5, z = .5)
+grid3d_discr = data.frame(x = .5, y = .5, z = .1)
 grid3d_depth = c(-3, 0) # min, max
 
 ## Boundaries of SG pillar
@@ -166,7 +166,7 @@ Zeros_border_density = .2
 
 ## Observed gravity data time series
 # this is optional and can be left empty if no automatized reduction is desired
-gravityObservations_input_file = "iGrav006_obs_60sec.tsf"
+gravityObservations_file = "iGrav006_obs_60sec.tsf"
 # gravityObservations_input_file = "iGrav006_obs_60sec.rData"
 ## Information for optimization algorithm
 # use inverse or conversion mode
@@ -174,23 +174,24 @@ gravityObservations_input_file = "iGrav006_obs_60sec.tsf"
 # in this case, infiltration parameters supplied in 'starting values' are used as model input
 inverse = TRUE
 # number of iterations of the algorithm
-model_runs = 5
+model_runs = 10
 
 ## set infiltration model parameters
 
-# ## single
-# # scen = "macro"
-# # scen = "wfa"
-# # scen = "bypass"
-# # scen = "perched"
-# ## combined
-# scen = "macro_bypass"
-# # scen = "macro_wfa"
-# # scen = "macro_perched"
+# set scenarios to include in optimization routine
+# use macro pore flow on top?
+use_macro = TRUE
+# 2 macro pore layers area only used if two_macro is set TRUE
+two_macro = TRUE
+# further infiltration dynamics
+# possible options are: wetting front advancement (wfa), by-pass flow and perched water table
+# please include or exclude the desired processes
+inf_dynamics = "wfa_bypass_perched"
 
 ## modeling time (duration of sprinkling experiment)
 # [min]
-precip_time = 360 
+# precip_time = 360 
+precip_time = 10 
 ## water input per timestep
 # in [m³/min]
 water_vol_min = 0.035
@@ -201,24 +202,20 @@ mb_permitted_error = 0.05
 ## Defines soil parameter boundaries
 # min and max values, defining the search boundaries for the optimization algorithm
 # Saturation deficit (theta)
-# use macro pore flow on top?
-use_macro = TRUE
-# 2 macro pore layers area only used if two_macro is set TRUE
-two_macro = TRUE
 # macropore layer
 dtheta_macro_min = 0.05 #[VWC]
 dtheta_macro_max = 0.20 #[VWC]
 dtheta_macro2_min = 0.02 #[VWC]
 dtheta_macro2_max = 0.10 #[VWC]
-mdepth_min = 0.1 #[m]
-mdepth_max = 0.5 #[m]
-mdepth2_min = 0.2 #[m]
-mdepth2_max = 1.5 #[m]
+mdepth_min = -0.5 #[m]
+mdepth_max = -0.1 #[m]
+mdepth2_min = -1.5 #[m]
+mdepth2_max = -0.2 #[m]
 # secondary infiltration process
 # vertical bounaries
 # if use_macro is set FALSE, this will be the only process used
-dtheta_pipe_min = 0.2 #[VWC]
-dtheta_pipe_max = 0.25 #[VWC]
+dtheta_other_min = 0.02 #[VWC]
+dtheta_other_max = 0.25 #[VWC]
 # other infiltration processes ("pipe") are now spatially DIRECTLY connected below the macro pore layer
 # if other is desired (e.g. gap between macro and pipe), this has to be activated again !
 # with the following lines uncommented, a gap between macro and pipe layer is allowed
@@ -234,11 +231,15 @@ latflow_fac_max = 1.0 #[1]
 # Starting values of above set infiltration model parameters
 dtheta_macro_start = 0.1
 dtheta_macro2_start = 0.05
-mdepth_start = 0.3
-mdepth2_start = 1.0
-dtheta_pipe_start = 0.05
+mdepth_start = -0.3
+mdepth2_start = -1.0
+dtheta_other_start = 0.05
 # pipedepth_start = 0.4
 latflow_fac_start = 0.4
+
+## plotting options
+plot_interval = precip_time / 10
+plot_transect_loc = SG_y 
 
 message("done.")
 ## end SETUP
@@ -275,11 +276,12 @@ surface_grid = surface_grid(
             # , sep = "a", etc.
 )
 
-if(plot_data){
-  if(surface_grid == NULL) break
-  ggplot(surface_grid, 
-         aes(x=x, y=y)) + 
-         geom_tile(aes(fill = z))
+if(!is.null(surface_grid)){
+  if(plot_data){
+    ggplot(surface_grid, 
+           aes(x=x, y=y)) + 
+           geom_tile(aes(fill = z))
+  }
 }
 
 message("done.")
@@ -374,10 +376,24 @@ configfile = data.frame(dir_input,
                         dir_output,
                         precip_time,
                         water_vol_min,
-                        "Intensity_distribution_interpolated.rData",
-                        "gravity_component_grid3d.rData",
-                        gravity_observations_file,
+                        IntensityDistribution_file = "Intensity_distribution_interpolated.rData",
+                        gcomp_file = "gravity_component_grid3d.rData",
+                        gravityObservations_file,
+                        data_tsf,
+                        spatial_col_x = spatial_col[1],
+                        spatial_col_y = spatial_col[2],
+                        spatial_col_z = spatial_col[3],
+                        data_col,
+                        discr_x = grid3d_discr$x,
+                        discr_y = grid3d_discr$y,
+                        discr_z = grid3d_discr$z,
                         mb_permitted_error,
+                        use_macro,
+                        two_macro,
+                        inf_dynamics,
+                        model_runs,
+                        plot_interval,
+                        plot_transect_loc,
                         stringsAsFactors=FALSE)
 save(configfile, file=paste0(dir_output, "configfile.rdata"))
 
@@ -391,10 +407,9 @@ if(!inverse){
               dtheta_macro2 = dtheta_macro2_start,
               mdepth = mdepth_start,
               mdepth2 = mdepth2_start,
-              dtheta_pipe = dtheta_pipe_start,
+              dtheta_other = dtheta_other_start,
               latflow_fac = latflow_fac_start,
-              macopores = use_macro,
-              macro2 = two_macro,
+              input_dir = dir_input,
               output_dir = dir_output
   )
 
@@ -411,8 +426,8 @@ if(!inverse){
               dtheta_macro_max = dtheta_macro_max,
               dtheta_macro2_min = dtheta_macro2_min,
               dtheta_macro2_max = dtheta_macro2_max,
-              dtheta_pipe_min = dtheta_pipe_min,
-              dtheta_pipe_max = dtheta_pipe_max,
+              dtheta_other_min = dtheta_other_min,
+              dtheta_other_max = dtheta_other_max,
               mdepth_min = mdepth_min,
               mdepth_max = mdepth_max,
               mdepth2_min = mdepth2_min,
@@ -423,13 +438,12 @@ if(!inverse){
               dtheta_macro2_start = dtheta_macro2_start,
               mdepth_start = mdepth_start,
               mdepth2_start = mdepth2_start,
-              dtheta_pipe_start = dtheta_pipe_start,
+              dtheta_other_start = dtheta_other_start,
               latflow_fac_start = latflow_fac_start,
-              macopores = use_macro,
-              macro2 = two_macro,
-              n_iterations = model_runs,
+              input_dir = dir_input,
               output_dir = dir_output
   )
+
   print("Finished optimization.")
 # end of inversion / conversion mode infiltration model runs
 }
@@ -446,8 +460,9 @@ print("done.")
 if(plot_data){
   message("Plotting modeled and observed gravity signal..")
 
+# plot LAST (optimized) model run scenario
   plot_gravity_responses(
-              gravity_obs = gravityObservations_input_file,
+              gravity_obs = gravityObservations_file,
               gravity_mod = "gravity_response_modeled.rData",
               input_dir = dir_input,
               output_dir = dir_output
@@ -466,7 +481,7 @@ if(plot_data){
 
   plot_transect_2d(
               soilmoisture_mod = "infiltration_model_output.rData",
-              plot_ts = ?,
+              plot_ts = plot_interval_ts,
               input_dir = dir_input,
               output_dir = dir_output
   )

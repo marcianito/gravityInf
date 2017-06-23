@@ -19,8 +19,8 @@ run_model_inversion = function(
             dtheta_macro_max = dtheta_macro_max,
             dtheta_macro2_min = dtheta_macro2_min,
             dtheta_macro2_max = dtheta_macro2_max,
-            dtheta_pipe_min = dtheta_pipe_min,
-            dtheta_pipe_max = dtheta_pipe_max,
+            dtheta_other_min = dtheta_other_min,
+            dtheta_other_max = dtheta_other_max,
             mdepth_min = mdepth_min,
             mdepth_max = mdepth_max,
             mdepth2_min = mdepth2_min,
@@ -31,12 +31,10 @@ run_model_inversion = function(
             dtheta_macro2_start = dtheta_macro2_start,
             mdepth_start = mdepth_start,
             mdepth2_start = mdepth2_start,
-            dtheta_pipe_start = dtheta_pipe_start,
+            dtheta_other_start = dtheta_other_start,
             latflow_fac_start = latflow_fac_start,
-            macopores = use_macro,
-            macro2 = two_macro,
-            n_iterations = 100,
             output_dir, 
+            input_dir,
             ...
 ){
     ## create necessary output directories
@@ -46,31 +44,36 @@ run_model_inversion = function(
         dir.create(file.path(output_dir, "model_output", "raw"))
     }
 
+    # load config file
+    load(file=paste0(output_dir, "configfile.rdata"))
+    macropores = configfile$use_macro
+    macro2 = configfile$two_macro
+
     # prepare model input data and parameter boundaries
     if(macropores){
       if(macro2){
         # combine input parameters
-        param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_macro2_min, dtheta_pipe_min, mdepth_min, mdepth2_min, latflow_fac_min),
-                              maximum = c(dtheta_macro_max, dtheta_macro2_max, dtheta_pipe_max, mdepth_max, mdepth2_max, latflow_fac_max))
+        param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_macro2_min, dtheta_other_min, mdepth_min, mdepth2_min, latflow_fac_min),
+                              maximum = c(dtheta_macro_max, dtheta_macro2_max, dtheta_other_max, mdepth_max, mdepth2_max, latflow_fac_max))
         # combine start parameter values
-        param_startvalue = c(dtheta_macro_start, dtheta_macro2_start, dtheta_pipe_start, mdepth_start, mdepth2_start, latflow_fac_start)
+        param_startvalue = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start)
         # set name of model to use
         model = "inf_model_3d_2macro"
       }else{
         # combine input parameters
-        param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_pipe_min, mdepth_min, latflow_fac_min),
-                              maximum = c(dtheta_macro_max, dtheta_pipe_max, mdepth_max, latflow_fac_max))
+        param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_other_min, mdepth_min, latflow_fac_min),
+                              maximum = c(dtheta_macro_max, dtheta_other_max, mdepth_max, latflow_fac_max))
         # combine start parameter values
-        param_startvalue = c(dtheta_macro_start, dtheta_pipe_start, mdepth_start, latflow_fac_start)
+        param_startvalue = c(dtheta_macro_start, dtheta_other_start, mdepth_start, latflow_fac_start)
         # set name of model to use
         model = "inf_model_3d_macro"
       }
     }else{
       # combine input parameters
-      param_bounds = data.frame(minimum = c(dtheta_pipe_min, mdepth_min, latflow_fac_min),
-                            maximum = c(dtheta_pipe_max, mdepth_max, latflow_fac_max))
+      param_bounds = data.frame(minimum = c(dtheta_other_min, mdepth_min, latflow_fac_min),
+                            maximum = c(dtheta_other_max, mdepth_max, latflow_fac_max))
       # combine start parameter values
-      param_startvalue = c(dtheta_pipe_start, mdepth_start, latflow_fac_start)
+      param_startvalue = c(dtheta_other_start, mdepth_start, latflow_fac_start)
       # set name of model to use
       model = "inf_model_3d_single"
     }
@@ -79,8 +82,13 @@ run_model_inversion = function(
     # this is used for naming figures and files for individiual model runs within the optimization routine
     n_param = 1 
     
+    # store actual working directory
+    wd_now = getwd()
     # set working directory
-    # setwd(dir_output)
+    setwd(dir_output)
+
+    # get number of desired model runs
+    n_iterations = configfile$model_runs
     
     ## run optimization
     opt_result = optim_dds(
@@ -105,27 +113,35 @@ run_model_inversion = function(
         plot_progress=FALSE,
         tryCall=FALSE)
 
+    # set previous working directory
+    setwd(wd_now)
+
   ## combine and save model results and model input
-  # load config file
-  load(file=paste0(output_dir, "configfile.rdata"))
-  dir_input = configfile$dir_input
-  dir_output = configfile$dir_output
-  precip_time = configfile$precip_time
-  IntensityDistribution = configfile$IntensityDistribution
-  water_vol_min = configfile$water_vol_min
-  gcompfile = configfile$gcompfile
-  gravityObs = configfile$gravityObs
-  mb_permitted_error = configfile$mb_permitted_error
+  # dir_input = configfile$dir_input
+  # dir_output = configfile$dir_output
+  # precip_time = configfile$precip_time
+  # IntensityDistribution = configfile$IntensityDistribution
+  # water_vol_min = configfile$water_vol_min
+  # gcompfile = configfile$gcompfile
+  # gravityObs = configfile$gravityObs
+  # mb_permitted_error = configfile$mb_permitted_error
 
   # scenario information
-  model_info = list(dir_input = dir_input,
-                       dir_output = dir_output,
-                       duration = precip_time,
-                       total_water_volume = water_vol_min,
-                       water_distribution_file = IntensityDistribution_file,
-                       gravity_component_grid_file = "gravity_component_grid3d.rData",
-                       gravity_observations_file = gravity_observations_file,
-                       permitted_massbalance_error = mb_permitted_error)
+  model_info = list(dir_input = configfile$dir_input,
+                       dir_output = configfile$dir_output,
+                       duration = configfile$precip_time,
+                       total_water_volume = configfile$water_vol_min,
+                       water_distribution_file = configfile$IntensityDistribution_file,
+                       gravity_component_grid_file = configfile$gcomp_file,
+                       gravity_observations_file = configfile$gravity_observations_file,
+                       permitted_massbalance_error = configfile$mb_permitted_error,
+                       macropore_layer = configfile$use_macro,
+                       macropore_layer2 = configfile$two_macro,
+                       infiltration_dynamics = configfile$inf_dynamics,
+                       n_iterations = configfile$model_runs,
+                       plot_interval = configfile$plot_interval,
+                       plot_transect_2d = configfile$plot_transect_loc
+                       )
   
   # combine optimization with scenario information
   stats = cbind(model_info, opt_result)

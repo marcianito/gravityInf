@@ -15,62 +15,9 @@
 
 inf_model_3d_2macro = function(param_vec){
 
-##########################################
-## directories
-##########################################
-# # local
-# dir_input = "/home/mreich/Dokumente/written/beregnungsPaper/data/output/irrigation/"
-# dir_output = "/home/mreich/Dokumente/written/beregnungsPaper/data/output/irrigation/"
-# dir_plots = "/home/mreich/Dokumente/written/beregnungsPaper/data/output/irrigation/plots/"
-# cluster
-# dir_plots = paste0(dir_output,"plots/")
-
-##########################################
-## scenario properties
-# should a water distribution be used?
-# IntensityDistribution = "homo"
-# IntensityDistribution = Intensity_distribution
-# IntensityDistribution = "ideal"
-##########################################
-
-##########################################
-## load infiltration data
-##########################################
-
-print("start calculatings for infiltration: COMBINED Extended scenarios..")
-
 # ####################
 # ## debugging
-# library(dplyr)
-# library(reshape2)
-# library(raster)
-# library(tidyr)
-# dir_output = "/home/mreich/Dokumente/written/beregnungsPaper/data/output/irrigation/"
-# load(file="/home/mreich/Dokumente/written/beregnungsPaper/data/output/irrigation/Intensity_distribution_real_IDW.rdata")
-# load(file="/home/mreich/Dokumente/written/beregnungsPaper/data/output/gravity/grids/gridcells.rdata")
-# load(file="/home/mreich/Dokumente/written/beregnungsPaper/data/output/gravity/grids/gcomp_irrigation_domain_allValid_3m.rdata")
-# precip_time = 360
-# exp3_meta = read.table(file="/home/mreich/Dokumente/written/beregnungsPaper/data/input/Irrigation/Irrigation_precondition_dry", skip= 5, nrows=8, dec=".", colClasses = character(), stringsAsFactors=F)
-# water_total_experiment = as.numeric(exp3_meta[6,2]) + as.numeric(exp3_meta[7,2]) # [m³]
-# water_vol_min = water_total_experiment / precip_time #[m³/min]
-# zlayers = round(seq(0,3, by=.1),1)
-# # params
-# dtheta_macro = 0.1
-# dtheta_macro2 = 0.000000005
-# dtheta_pipe = 0.01
-# mdepth = 0.3
-# mdepth2 = 1 
-# pipedepth = 0.6
-# latflow_fac = 0.5
-# mb_permitted_error = 0.05
-# vertflow_fac = 1 - latflow_fac
-# vol_cell = 0.1 * 0.1 * 0.1 # [m³]
-# Irrigation_grid = dplyr::select(gcomp_irrigation_domain, x,y,z,zgrid)
-# zlayers = round(unique(Irrigation_grid$zgrid),1)
-# num_cell = length(unique(Irrigation_grid$x)) *  length(unique(Irrigation_grid$y))
-# cfactor = 0.4
-# sfactor = 1 - cfactor
-# dir_output = "/home/mreich/temp/"
+# param_vec = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start)
 # ####################
 
 # ##########
@@ -82,37 +29,58 @@ print("start calculatings for infiltration: COMBINED Extended scenarios..")
 ###################
 ## load model configuration
 load(file="configfile.rdata")
-dir_input = configfile$dir_input
-dir_output = configfile$dir_output
+input_dir = configfile$dir_input
+output_dir = configfile$dir_output
 precip_time = configfile$precip_time
-IntensityDistribution = configfile$IntensityDistribution
+IntensityDistribution_file = configfile$IntensityDistribution_file
 water_vol_min = configfile$water_vol_min
-gcompfile = configfile$gcompfile
-gravityObs = configfile$gravityObs
+gcomp_file = configfile$gcomp_file
+gravity_obs = configfile$gravityObservations_file
+dat_tsf = configfile$data_tsf
+spat_col_x = configfile$spatial_col_x
+spat_col_y = configfile$spatial_col_y
+spat_col_z = configfile$spatial_col_z
+dat_col = configfile$data_col
+x = configfile$discr_x
+y = configfile$discr_y
+z = configfile$discr_z
 mb_permitted_error = configfile$mb_permitted_error
+macropore_layer = configfile$use_macro
+macropore_layer2 = configfile$two_macro
+infiltration_dynamics = configfile$inf_dynamics
+n_iterations = configfile$model_runs
+plot_interval = configfile$plot_interval
+plot_transect_2d = configfile$plot_transect_loc
 
-# setting plot directory
-dir_plots = paste0(dir_output,"plots/")
+# construct grid discretization
+grid_discretization = data.frame(x, y, z)
+# construct spatial input data columns
+spat_col = c(spat_col_x, spat_col_y, spat_col_z)
+# set plot directory
+dir_plots = paste0(dir_output,"model_output/plots/")
 
 # volume of grid cell 
-vol_cell = 0.1 * 0.1 * 0.1 # [m³]
-# gridcells
-load(file=paste0(dir_input, "gridcells.rdata"))
+vol_cell = grid_discretization$x * grid_discretization$y * grid_discretization$z # [m³]
 
 ## load gravity calculation data
 # load gravity effect grid
-load(file=paste0(dir_input, gcompfile))
-# load igrav time series in same period
-load(file=paste0(dir_input, gravityObs))
-# set same column name for joining datasets
-colnames(igrav_exp3)[2] = "gmod"
-igrav_exp3_cor = mutate(igrav_exp3, gmod = gmod - min(gmod))
-igrav_timesteps = data.frame(Timestep = 1:length(igrav_exp3_cor$gmod[-1]), gmod = igrav_exp3_cor$gmod[-1])
+gcomp_grid = load(file=paste0(input_dir, gcomp_file))
+gcomp_grid = get(gcomp_grid)
 
-Irrigation_grid = dplyr::select(gcomp_irrigation_domain, x,y,z,zgrid)
+# load igrav time series in same period
+gravity_obs_data = read_data(gravity_obs, input_dir)
+# set same column name for joining datasets
+colnames(gravity_obs_data)[2] = "gmod"
+# reduce time series by first value (in order to start at zero mass change)
+# gravity_obs_data = mutate(gravity_obs_data, gmod = gmod - min(gmod))
+gravity_obs_data = mutate(gravity_obs_data, gmod = gmod - gmod[1])
+# gravity_timesteps = data.frame(datetime = 1:length(gravity_obs_data$gmod[-1]), gmod = gravity_obs_data$gmod[-1])
+gravity_timesteps = data.frame(datetime = 1:precip_time, gmod = gravity_obs_data$gmod[2:(precip_time+1)])
+
+Irrigation_grid = dplyr::select(gcomp_grid, x, y, z, Depth)
 
 # vertical layers
-zlayers = round(unique(Irrigation_grid$zgrid),1)
+zlayers = round(unique(Irrigation_grid$Depth),1)
 # number of cells per layer
 num_cell = length(unique(Irrigation_grid$x)) *  length(unique(Irrigation_grid$y))
 
@@ -126,30 +94,17 @@ sfactor = 0.6
 # 4 * 0.35/SUM(all factors for all cells) = 4 * 0.1
 cfactor = 0.4
 
-# ##########
 # ## logging to file
-# logfile = paste0("irrigation zgrid: ",unique(Irrigation_in$zgrid))
+# logfile = paste0("irrigation Depth: ",unique(Irrigation_in$Depth))
 # write.table(logfile, file=paste0(dir_output, "logfile"), append=T)
 # ##########
 
-##########################################
-## set scenario settings: intensity distribution
-switch(IntensityDistribution,
-       ideal = {
-          load(file=paste0(dir_input, "Intensity_distribution_ideal_IDW.rdata"))
-          # Irrigation_in = inner_join(Irrigation_in, Intensity_distribution)
-       },
-       real = {
-          load(file=paste0(dir_input, "Intensity_distribution_real_IDW.rdata"))
-          # Irrigation_in = inner_join(Irrigation_in, Intensity_distribution)
-       }
-)
-##########################################
+# load water intensity distribution
+Intensity_distribution = load(file=paste0(output_dir, IntensityDistribution_file))
+Intensity_distribution = get(Intensity_distribution)
 
-####################
 ## prepare statistis outout
 stats = data.frame()
-####################
 
 print("Finished loading setup parameters.")
 
@@ -158,7 +113,7 @@ print("Finished loading setup parameters.")
 ##########################################
 dtheta_macro = param_vec[1]
 dtheta_macro2 = param_vec[2]
-dtheta_pipe = param_vec[3]
+dtheta_other = param_vec[3]
 # parameter values in meters have to be rounded
 # otherwise values will NOT match grid discretization !!
 mdepth = round(param_vec[4],1)
@@ -198,31 +153,31 @@ mdepth2_layer = which(zlayers == mdepth2)
 # print(mdepth_layer)
 # print(zlayers)
 # print(dtheta_macro)
-# print(dtheta_pipe)
+# print(dtheta_infDynProc)
 
 # # depth of pipe routing
-pipedepth = mdepth2 + 0.1 # [m]
-# pipedepth = 0.8  # [m]
+otherdepth = mdepth2 - grid_discretization$z # [m]
 # determine vertical start
-# pipe_layer = which(zlayers == pipedepth)
-## how many layers are between macro and pipe process?
-# layer_between = pipe_layer - mdepth_layer - 1
+# other_layer = which(zlayers == otherdepth)
+## how many layers are between macro and other process?
+# layer_between = other_layer - mdepth_layer - 1
 macro_layer_between = mdepth2_layer - mdepth_layer
 # ####################
 # 
 tsx = dplyr::mutate(Irrigation_grid,
-      column = rep(gridcells$ncell, length(zlayers))) %>%
+      # column = rep(gridcells$ncell, length(zlayers))) %>%
+      column = rep(1:num_cell, length(zlayers))) %>%
       dplyr::mutate(cnt = 1) %>%
-      dplyr::mutate(Timestep = 0) %>%
+      dplyr::mutate(datetime = 0) %>%
       dplyr::mutate(value = 0) %>%
       dplyr::mutate(prevalue = 0)
 
 ## tag vertical layers with infiltration process
-layer_params = data.frame(zgrid = zlayers,
-                         infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("pipe",(length(zlayers) - mdepth2_layer))),
+layer_params = data.frame(Depth = zlayers,
+                         infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("other",(length(zlayers) - mdepth2_layer))),
                          nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), seq(1,length.out=(length(zlayers) - mdepth2_layer))),
                          # nlayer = c(rep(1,mdepth_layer), seq(1,length.out=(length(zlayers) - mdepth_layer))),
-                         dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_pipe,(length(zlayers) - mdepth2_layer)))
+                         dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_infDynProc,(length(zlayers) - mdepth2_layer)))
               )
 
 ## tag cells with layer parameters
@@ -248,7 +203,7 @@ tsx = inner_join(tsx, Intensity_distribution) %>%
       mutate(cell_id = paste0(nlayer,"_",column,"_",infProcess))
 
 ## construct database with cell neighbours
-celllayer = dplyr::filter(tsx, zgrid == 0) %>%
+celllayer = dplyr::filter(tsx, Depth == 0) %>%
                  dplyr::select(x,y,column)
 
 # find side cells
@@ -280,32 +235,31 @@ tsx = left_join(tsx, cellneig_sides) %>%
       dplyr::mutate(lat_c4 = ifelse(!is.na(lat_c4),paste0(nlayer,"_",lat_c4), lat_c4))
 
 ## create mass balance error file
-mb_error = data.frame(Timestep = seq(1:precip_time), error = NA, corrected = NA)
+mb_error = data.frame(datetime = seq(1:precip_time), error = NA, corrected = NA)
 
 ####################
 ## start with for loop and TS1
-time.s = proc.time()
 for(i in 1:precip_time){ 
 # for(i in 3:10){ 
   # i=2
 ## pass previous values to new time step data.frame
 tsx$prevalue = tsx$value
 # tsx$value = 0
-tsx$Timestep = i
+tsx$datetime = i
 
 ## fill cells with water of time step x
 ####################
 ## vertical infiltration
-## filling is done seperately for macro pore cells and other ("pipe") cells
+## filling is done seperately for macro pore cells and other ("other") cells
 tsx = dplyr::mutate(tsx, value_macro = ifelse(infProcess == "macro" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn), prevalue)) %>%
       dplyr::mutate(value_macro = ifelse(infProcess == "macro2" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn), value_macro)) %>%
       dplyr::mutate(value_macro = ifelse(infProcess == "macro" | infProcess == "macro2", value_macro, 0)) %>%
       ## normal filing
-      dplyr::mutate(value_pipe = ifelse(infProcess == "pipe" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn) * vertflow_fac, prevalue)) %>%
+      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn) * vertflow_fac, prevalue)) %>%
       ## adjust water amount for "vertically first filled cell", where all column water goes in !!
-      dplyr::mutate(value_pipe = ifelse(infProcess == "pipe" & nlayer == layerfill & aboveSat == F, value_pipe + (distrWater / cellsLayerColumn) * (1 - vertflow_fac), value_pipe)) %>%
-      dplyr::mutate(value_pipe = ifelse(infProcess == "pipe", value_pipe, 0)) %>%
-      dplyr::mutate(value = value_macro + value_pipe)
+      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill & aboveSat == F, value_other + (distrWater / cellsLayerColumn) * (1 - vertflow_fac), value_other)) %>%
+      dplyr::mutate(value_other = ifelse(infProcess == "other", value_other, 0)) %>%
+      dplyr::mutate(value = value_macro + value_other)
 ####################
 
 ####################
@@ -385,11 +339,11 @@ if(abs(1 - mb_ts / water_vol_min) > mb_permitted_error){
 # write.table(tsx, file=paste0(dir_output, "raw/tsx_TS", formatC(i, width=3, flag="0"), ".txt"), sep="\t", row.names=F, col.names=F, append=F)
 # }
 if(i == 1){
-write.table(dplyr::select(tsx, x, y, z, zgrid, value, Timestep), 
-            file=paste0(dir_output, "raw/tsx_TS", formatC(i, width=3, flag="0"), ".txt"), sep="\t", row.names=F, col.names=T, append=F)
+write.table(dplyr::select(tsx, x, y, z, Depth, value, datetime), 
+            file=paste0(output_dir, "model_output/raw/tsx_TS", formatC(i, width=3, flag="0"), ".txt"), sep="\t", row.names=F, col.names=T, append=F)
 }else{
-write.table(dplyr::select(tsx, x, y, z, zgrid, value, Timestep),
-            file=paste0(dir_output, "raw/tsx_TS", formatC(i, width=3, flag="0"), ".txt"), sep="\t", row.names=F, col.names=F, append=F)
+write.table(dplyr::select(tsx, x, y, z, Depth, value, datetime),
+            file=paste0(output_dir, "model_output/raw/tsx_TS", formatC(i, width=3, flag="0"), ".txt"), sep="\t", row.names=F, col.names=F, append=F)
 }
 
 ## transmitting information to adjacent cells about saturation state
@@ -429,19 +383,16 @@ tsx = dplyr::select(tsx, - layerfill) %>%
 ## and thus directly influences errors in mass balance
 cellnums_dynamic = dplyr::mutate(layerfilling, ncells = ifelse(infProcess == "macro" & layerfill < 2, mdepth * 10 +1, 0)) %>%
                    dplyr::mutate(ncells = ifelse(infProcess == "macro2" & layerfill < 2, (mdepth2 - mdepth) * 10, ncells)) %>%
-                   dplyr::mutate(ncells = ifelse(infProcess == "pipe", 1, ncells)) %>%
+                   dplyr::mutate(ncells = ifelse(infProcess == "other", 1, ncells)) %>%
                    dplyr::group_by(column) %>%
                    dplyr::summarize(cellsLayerColumn = sum(ncells, na.rm=T))
 tsx = dplyr::select(tsx, - cellsLayerColumn) %>%
       inner_join(cellnums_dynamic)
 
 } # end for loop
-time.e = proc.time()
-print("model ascii files")
-print(time.e - time.s)
 
 ## save mass balance error log
-save(mb_error, file=paste0(dir_output, "MassBalanceError_", n_param, ".rdata"))
+save(mb_error, file=paste0(output_dir, "MassBalanceError_", n_param, ".rdata"))
 
 # # ####################
 # # ## debugging
@@ -486,92 +437,72 @@ save(mb_error, file=paste0(dir_output, "MassBalanceError_", n_param, ".rdata"))
 # 
 ####################
 ## stich ascii files using bash
-time.s = proc.time()
 print("stiching output files")
-systemcall_stich = paste0("cat ", dir_output, "raw/*.txt > ", dir_output, "raw/rawdata")
-#system("cat /home/hydro/mreich/Irrigation/output/modbased/raw/*.txt > /home/hydro/mreich/Irrigation/output/modbased/raw/rawdata")
+systemcall_stich = paste0("cat ", output_dir, "model_output/raw/*.txt > ", output_dir, "model_output/raw/rawdata")
 system(systemcall_stich)
-time.e = proc.time()
-print(time.e - time.s)
 ####################
 ## load stitched file
-time.s = proc.time()
 print("read stiched output files")
 # regular read.table
-# Irrigation_macropiping = read.table(file=paste0(dir_output, "raw/rawdata.txt"), header = F, sep="\t", dec=".")
-# colnames(Irrigation_macropiping) = tsx_header
 # data.tables fread
-Irrigation_macropiping = fread(file=paste0(dir_output, "raw/rawdata"), header = T, sep="\t", dec=".", 
+Infiltration_model_results = fread(file=paste0(output_dir, "model_output/raw/rawdata"), header = T, sep="\t", dec=".", 
                                ## read only columns needed
-                               select = c("x","y","z","zgrid","value","Timestep"))
+                               select = c("x","y","z","Depth","value","datetime"))
 ## convert data.table to data.frame
-setDF(Irrigation_macropiping)
-time.e = proc.time()
-print(time.e - time.s)
+setDF(Infiltration_model_results)
 
 ####################
 ## check if all water was actually distributed
-# water_bal = group_by(Irrigation_macropiping, Timestep) %>%
+# water_bal = group_by(Infiltration_macropiping, Timestep) %>%
 #                 dplyr::summarize(water_distributed = sum(value / Timestep, na.rm = T) * vol_cell)
 # save(water_bal, file=paste0(dir_output,"water_bal_", n_param, ".rdata"))
 
 ####################
 ## reasonability checks ("sub"-unit testing on scenario basis)
 # check total water of system
-print("water balance MACROPORES & PIPING:")
-# print( checkWaterVolumes(Irrigation_macropiping, "totalwater", precip_time, vol_cell, water_vol_min) )
-# # check water of each timestep
+print("Water balance of every time step:")
+# print( checkWaterVolumes(Infiltration_model_results, "totalwater", precip_time, vol_cell, water_vol_min) )
+# checkTS = precip_time
 # # check water of one timestep
-checkTS = precip_time
-# checkTS = 50
-# print("water balance PISTON FLOW (ts = 360):")
-checkWaterVolumes(Irrigation_macropiping, "tswater", precip_time, vol_cell, water_vol_min, checkTS)
+# checkWaterVolumes(Infiltration_model_results, "tswater", precip_time, vol_cell, water_vol_min, checkTS)
+# # check water of each timestep
 plots=F
-print(checkWaterVolumes(Irrigation_macropiping, "waterpertimestep", precip_time, vol_cell, water_vol_min, plotting=plots))
+print(checkWaterVolumes(Infiltration_model_results, "waterpertimestep", precip_time, vol_cell, water_vol_min, plotting=plots))
 # plot
-png(file=paste0(dir_plots, "Distribution_simple_macropiping_mean_", n_param, ".png"), width=1000, height=1000, res=250)
-print(plotInfWater(Irrigation_macropiping, "means"))
+png(file=paste0(dir_plots, "Distribution_soilmoisture_mean_", n_param, ".png"), width=1000, height=1000, res=250)
+print(plotInfWater(Infiltration_model_results, "means"))
 dev.off()
-png(file=paste0(dir_plots, "Distribution_simple_macropiping_max_", n_param, ".png"), width=1000, height=1000, res=250)
-print(plotInfWater(Irrigation_macropiping, "theta"))
+png(file=paste0(dir_plots, "Distribution_soilmoisture_max_", n_param, ".png"), width=1000, height=1000, res=250)
+print(plotInfWater(Infiltration_model_results, "theta"))
 dev.off()
 
 ##########
-# load(file=paste0(dir_output, "Irrigation_combiExt_macropiping_", n_param, ".rdata"))
+# load(file=paste0(dir_output, "Infiltration_combiExt_macropiping_", n_param, ".rdata"))
 # plot profile (along x)
 # igrav_x = 4564082.00
 # igrav_y = 5445669.70
-yrel = 8 # [m]
-png(file=paste0(dir_plots, "Distribution_simple_macropiping_ProfileTs60_", n_param, ".png"), width=1000, height=1000, res=250)
-plot(plotIrrigationProfile(Irrigation_macropiping, tstep = 60, yrel, "x"))
-dev.off()
-png(file=paste0(dir_plots, "Distribution_simple_macropiping_ProfileTs120_", n_param, ".png"), width=1000, height=1000, res=250)
-plot(plotIrrigationProfile(Irrigation_macropiping, tstep = 120, yrel, "x"))
-dev.off()
-png(file=paste0(dir_plots, "Distribution_simple_macropiping_ProfileTs180_", n_param, ".png"), width=1000, height=1000, res=250)
-plot(plotIrrigationProfile(Irrigation_macropiping, tstep = 180, yrel, "x"))
-dev.off()
-png(file=paste0(dir_plots, "Distribution_simple_macropiping_ProfileTs240_", n_param, ".png"), width=1000, height=1000, res=250)
-plot(plotIrrigationProfile(Irrigation_macropiping, tstep = 240, yrel, "x"))
-dev.off()
-png(file=paste0(dir_plots, "Distribution_simple_macropiping_ProfileTs300_", n_param, ".png"), width=1000, height=1000, res=250)
-plot(plotIrrigationProfile(Irrigation_macropiping, tstep = 300, yrel, "x"))
-dev.off()
-png(file=paste0(dir_plots, "Distribution_simple_macropiping_ProfileTs360_", n_param, ".png"), width=1000, height=1000, res=250)
-plot(plotIrrigationProfile(Irrigation_macropiping, tstep = 360, yrel, "x"))
-dev.off()
+# yrel = 8 # [m]
 
-print(paste0("Saving Irrigation data for n_param: ", n_param))
+# define time steps to plot
+plot_ts = seq(Infiltration_model_results$datetime[1], Infiltration_model_results$datetime[precip_time], by = plot_interval)
+# plot
+for(ts_i in plot_ts){
+png(file=paste0(dir_plots, "Transect_soilmoisture_TS_", plot_interval, "_", n_param, ".png"), width=1000, height=1000, res=250)
+plot(plotInfiltrationProfile(Infiltration_model_results, tstep = ts_i, plot_transect_loc, "x"))
+dev.off()
+}
+
+print(paste0("Saving Infiltration data for n_param: ", n_param))
 ## save data
-save(Irrigation_macropiping, file=paste0(dir_output, "Irrigation_combiExt_macropiping_", n_param, ".rdata"))
+save(Infiltration_model_results, file=paste0(dir_output, "Infiltration_model_output", n_param, ".rData"))
 
 # 
 ##debug
 #load data
-# load(file=paste0(dir_output, "Irrigation_combiExt_macropiping_", n_param, ".rdata"))
-# print(str(Irrigation_macropiping))
+# load(file=paste0(dir_output, "Infiltration_combiExt_macropiping_", n_param, ".rdata"))
+# print(str(Infiltration_model_results))
 # print(str(gcomp_irrigation_domain))
-# tt =dplyr::select(Irrigation_macropiping, x,y,z,value,Timestep)
+# tt =dplyr::select(Infiltration_model_results, x,y,z,value,Timestep)
 # print(str(tt))
 # print(range(tt$Timestep))
 # ttt = left_join(gcomp_irrigation_domain, tt)
@@ -579,14 +510,14 @@ save(Irrigation_macropiping, file=paste0(dir_output, "Irrigation_combiExt_macrop
 # print(range(ttt$Timestep))
 # print(range(ttt$value))
 # print("other test irrigation dataset:")
-# load(file="/home/hydro/mreich/Irrigation/output/combi/Irrigation_simple_macropiping.rdata")
+# load(file="/home/hydro/mreich/Infiltration/output/combi/Infiltration_simple_macropiping.rdata")
 # print("-zgrid")
-# tt =dplyr::select(Irrigation_macropiping, -zgrid)
+# tt =dplyr::select(Infiltration_model_results, -zgrid)
 # print(str(tt))
 # ttt = left_join(gcomp_irrigation_domain, tt)
 # print(str(ttt))
 # print("select positiv")
-# tt =dplyr::select(Irrigation_macropiping, x,y,z,value,Timestep)
+# tt =dplyr::select(Infiltration_model_results, x,y,z,value,Timestep)
 # print(str(tt))
 # ttt = left_join(gcomp_irrigation_domain, tt)
 # print(str(ttt))
@@ -598,45 +529,48 @@ save(Irrigation_macropiping, file=paste0(dir_output, "Irrigation_combiExt_macrop
 ## due to saving into ascii, reading and stiching (within the processing procedure)
 ## joining columns (x,y,z) have to be rounded! in order to match with gravity component grid
 ## !!
-Irrigation_macropiping$x = round(Irrigation_macropiping$x,2)
-Irrigation_macropiping$y = round(Irrigation_macropiping$y,2)
-Irrigation_macropiping$z = round(Irrigation_macropiping$z,2)
-gcomp_irrigation_domain$x = round(gcomp_irrigation_domain$x,2)
-gcomp_irrigation_domain$y = round(gcomp_irrigation_domain$y,2)
-gcomp_irrigation_domain$z = round(gcomp_irrigation_domain$z,2)
+round_x = decimalplaces(grid_discretization$x)
+round_y = decimalplaces(grid_discretization$y)
+round_z = decimalplaces(grid_discretization$z)
+Infiltration_model_results$x = round(Infiltration_model_results$x, round_x)
+Infiltration_model_results$y = round(Infiltration_model_results$y, round_y)
+Infiltration_model_results$z = round(Infiltration_model_results$z, round_z)
+gcomp_grid$x = round(gcomp_grid$x, round_x)
+gcomp_grid$y = round(gcomp_grid$y, round_y)
+gcomp_grid$z = round(gcomp_grid$z, round_z)
 
-# should timesteps or POSIXct units be shown on x-axis?
-showRealdates = F
-# gsignal_irrigation_macropiping = gsignal_grids_3d(gcomp_irrigation_domain, dplyr::select(Irrigation_macropiping, -zgrid), showRealdates)
-print("calculating gravity response..")
-gsignal_irrigation_macropiping = gsignal_grids_3d(gcomp_irrigation_domain, dplyr::select(Irrigation_macropiping, x,y,z,value,Timestep), showRealdates)
+# calculating gravity reponse
+print("Calculating gravity response..")
+infiltration_gmod = calculate_gravity_response(gcomp_grid, Infiltration_model_results)
 #save gsignal
-save(gsignal_irrigation_macropiping, file=paste0(dir_output, "gmod_Irrigation_macropiping_", n_param, ".rdata"))
-# print(str(gsignal_irrigation_macropiping))
+save(infiltration_gmod, file=paste0(dir_output, "GravityResponse_Infiltration_model_", n_param, ".rData"))
+# print(str(infiltration_gmod))
+# change column name for plotting
+colnames(infiltration_gmod)[2] = "gmod"
 
 ## combine datasets and plot
 gmod = rbind(
-         cbind(igrav_timesteps, Scenario="iGrav (observed)"),
-	     cbind(gsignal_irrigation_macropiping, Scenario="Macro & Piping")
+         cbind(gravity_timesteps, Scenario="Gravity signal observed"),
+	     cbind(infiltration_gmod, Scenario="Gravity signal modeled")
          )
 
-png(file=paste0(dir_plots, "gmod_signal_Irrigation_combinedExtScenarios_macropipe_", n_param, ".png"), width=1500, height=1000, res=250)
-plot(ggplot(gmod, aes(x=Timestep, y=gmod, colour=Scenario)) + geom_line() + 
-	ylab("Gravity [nm/s²]") + xlab("Time since irrigation start [min]"))
+png(file=paste0(dir_plots, "GravityResponses_", n_param, ".png"), width=1500, height=1000, res=250)
+plot(ggplot(gmod, aes(x=datetime, y=gmod, colour=Scenario)) + geom_line() + 
+	ylab("Gravity [nm/s²]") + xlab("Time since sprinkling start [min]"))
 dev.off()
 
 ####################
 ## calculate fit to gobs
 
 ## regular KGE
-# kge_value = KGE(gsignal_irrigation_macropiping$gmod, igrav_timesteps$gmod)
+# kge_value = KGE(infiltration_gmod$gmod, igrav_timesteps$gmod)
 ## changing scaling factor of component BIAS
-kge_value = KGE(gsignal_irrigation_macropiping$gmod, igrav_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
+kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
 kge_fit = 1 - kge_value
 
 ####################
 ## clean up memory
-rm(Irrigation_macropiping, gsignal_irrigation_macropiping)
+rm(Infiltration_model_results, infiltration_gmod)
 gc()
 ## move to next n_param value for plot indexing
 n_param <<- n_param + 1
@@ -645,10 +579,10 @@ n_param <<- n_param + 1
 ## KGE
 return(kge_fit) 
 
-## else statement, runs if pipedepth > mdepth
+## else statement, runs if otherdepth > mdepth
 }
 
-print("finished MACROPORES & PIPING !")
+print("Finished model run.")
 ####################
 } # end of function
 

@@ -181,7 +181,8 @@ tt = data_interpolated[[3]]
             # data_interpolated = data_interpolated[,-4]
            }
     )
-
+    # exclude original weight data
+    intensities_grid_interpolated = dplyr::select(intensities_grid_interpolated, -value)
     return(intensities_grid_interpolated)
 }
 
