@@ -462,38 +462,29 @@ setDF(Infiltration_model_results)
 ## reasonability checks ("sub"-unit testing on scenario basis)
 # check total water of system
 print("Water balance of every time step:")
-# print( checkWaterVolumes(Infiltration_model_results, "totalwater", precip_time, vol_cell, water_vol_min) )
-# checkTS = precip_time
-# # check water of one timestep
-# checkWaterVolumes(Infiltration_model_results, "tswater", precip_time, vol_cell, water_vol_min, checkTS)
 # # check water of each timestep
 plots=F
-print(checkWaterVolumes(Infiltration_model_results, "waterpertimestep", precip_time, vol_cell, water_vol_min, plotting=plots))
-# plot
-# png(file=paste0(dir_plots, "Distribution_soilmoisture_mean_", n_param, ".png"), width=1000, height=1000, res=250)
-# print(plotInfWater(Infiltration_model_results, "means"))
-# dev.off()
+plot(checkWaterVolumes(
+        sm_mod_data = Infiltration_model_results,
+        whichCheck = "waterpertimestep",
+        inf_time = precip_time,
+        cell_volume = vol_cell,
+        infWater_timestep = water_vol_min)
+)
+
+# plot maximum soil moisture of each depth over experiment time
 png(file=paste0(dir_plots, "Distribution_soilmoisture_max_", n_param, ".png"), width=1000, height=1000, res=250)
-# plot(plotInfWater(Infiltration_model_results, "theta"))
 plot(plot_tempWaterDistribution(
         sm_mod_data = Infiltration_model_results,
         plotvar = "max")
 )
 dev.off()
 
-##########
-# load(file=paste0(dir_output, "Infiltration_combiExt_macropiping_", n_param, ".rdata"))
-# plot profile (along x)
-# igrav_x = 4564082.00
-# igrav_y = 5445669.70
-# yrel = 8 # [m]
-
+# plot one transect for many (chosen) time steps
 # define time steps to plot
 plot_ts = seq(Infiltration_model_results$datetime[1], Infiltration_model_results$datetime[precip_time], by = plot_interval)
-# plot
 for(ts_i in plot_ts){
 png(file=paste0(dir_plots, "Transect_soilmoisture_TS_", plot_interval, "_", n_param, ".png"), width=1000, height=1000, res=250)
-# plot(plotInfiltrationProfile(Infiltration_model_results, tstep = ts_i, plot_transect_loc, "x"))
 plot(plot_transect_2d(
         sm_mod_data = Infiltration_model_results,
         tstep = ts_i,
@@ -566,7 +557,7 @@ gmod = rbind(
 
 png(file=paste0(dir_plots, "GravityResponses_", n_param, ".png"), width=1500, height=1000, res=250)
 plot(ggplot(gmod, aes(x=datetime, y=gmod, colour=Scenario)) + geom_line() + 
-	ylab("Gravity [nm/s²]") + xlab("Time since sprinkling start [min]"))
+	ylab("Gravity [nm/s²]") + xlab("Time since sprinkling start"))
 dev.off()
 
 ####################
