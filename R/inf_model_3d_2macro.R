@@ -24,6 +24,7 @@ inf_model_3d_2macro = function(param_vec){
 # ## logging to file
 # logfile = paste0("irrigation zgrid: ",unique(Irrigation_in$zgrid))
 # write.table(logfile, file=paste0(dir_output, "logfile"), append=T)
+print(paste0("n_param: ", n_param))
 # ##########
 
 ###################
@@ -136,7 +137,7 @@ vertflow_fac = 1 - latflow_fac
 # # if everything is okay, run normally
 # }else{ 
 
-if(mdepth2 <= mdepth){
+if(mdepth2 >= mdepth){
   kge_fit = 1
   return(kge_fit) 
 # if everything is okay, run normally
@@ -177,7 +178,7 @@ layer_params = data.frame(Depth = zlayers,
                          infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("other",(length(zlayers) - mdepth2_layer))),
                          nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), seq(1,length.out=(length(zlayers) - mdepth2_layer))),
                          # nlayer = c(rep(1,mdepth_layer), seq(1,length.out=(length(zlayers) - mdepth_layer))),
-                         dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_infDynProc,(length(zlayers) - mdepth2_layer)))
+                         dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_other,(length(zlayers) - mdepth2_layer)))
               )
 
 ## tag cells with layer parameters
@@ -392,7 +393,7 @@ tsx = dplyr::select(tsx, - cellsLayerColumn) %>%
 } # end for loop
 
 ## save mass balance error log
-save(mb_error, file=paste0(output_dir, "MassBalanceError_", n_param, ".rdata"))
+save(mb_error, file=paste0(output_dir, "model_output/MassBalanceError_", n_param, ".rdata"))
 
 # # ####################
 # # ## debugging
@@ -469,11 +470,15 @@ print("Water balance of every time step:")
 plots=F
 print(checkWaterVolumes(Infiltration_model_results, "waterpertimestep", precip_time, vol_cell, water_vol_min, plotting=plots))
 # plot
-png(file=paste0(dir_plots, "Distribution_soilmoisture_mean_", n_param, ".png"), width=1000, height=1000, res=250)
-print(plotInfWater(Infiltration_model_results, "means"))
-dev.off()
+# png(file=paste0(dir_plots, "Distribution_soilmoisture_mean_", n_param, ".png"), width=1000, height=1000, res=250)
+# print(plotInfWater(Infiltration_model_results, "means"))
+# dev.off()
 png(file=paste0(dir_plots, "Distribution_soilmoisture_max_", n_param, ".png"), width=1000, height=1000, res=250)
-print(plotInfWater(Infiltration_model_results, "theta"))
+# plot(plotInfWater(Infiltration_model_results, "theta"))
+plot(plot_tempWaterDistribution(
+        sm_mod_data = Infiltration_model_results,
+        plotvar = "max")
+)
 dev.off()
 
 ##########
@@ -488,13 +493,18 @@ plot_ts = seq(Infiltration_model_results$datetime[1], Infiltration_model_results
 # plot
 for(ts_i in plot_ts){
 png(file=paste0(dir_plots, "Transect_soilmoisture_TS_", plot_interval, "_", n_param, ".png"), width=1000, height=1000, res=250)
-plot(plotInfiltrationProfile(Infiltration_model_results, tstep = ts_i, plot_transect_loc, "x"))
+# plot(plotInfiltrationProfile(Infiltration_model_results, tstep = ts_i, plot_transect_loc, "x"))
+plot(plot_transect_2d(
+        sm_mod_data = Infiltration_model_results,
+        tstep = ts_i,
+        y_pos = plot_transect_loc)
+)
 dev.off()
 }
 
 print(paste0("Saving Infiltration data for n_param: ", n_param))
 ## save data
-save(Infiltration_model_results, file=paste0(dir_output, "Infiltration_model_output", n_param, ".rData"))
+save(Infiltration_model_results, file=paste0(dir_output, "model_output/Infiltration_model_output_", n_param, ".rData"))
 
 # 
 ##debug
@@ -543,7 +553,7 @@ gcomp_grid$z = round(gcomp_grid$z, round_z)
 print("Calculating gravity response..")
 infiltration_gmod = calculate_gravity_response(gcomp_grid, Infiltration_model_results)
 #save gsignal
-save(infiltration_gmod, file=paste0(dir_output, "GravityResponse_Infiltration_model_", n_param, ".rData"))
+save(infiltration_gmod, file=paste0(dir_output, "model_output/GravityResponse_Infiltration_model_", n_param, ".rData"))
 # print(str(infiltration_gmod))
 # change column name for plotting
 colnames(infiltration_gmod)[2] = "gmod"
@@ -573,6 +583,7 @@ kge_fit = 1 - kge_value
 rm(Infiltration_model_results, infiltration_gmod)
 gc()
 ## move to next n_param value for plot indexing
+print(n_param)
 n_param <<- n_param + 1
 
 ## returning quality criteria:

@@ -16,24 +16,29 @@
 #' @references Marvin Reich (2017), mreich@@posteo.de
 #' @examples missing
 
-plot_transect_2d = function(
-            sm_mod_data,
-            tstep,
+plot_transects_2d = function(
+            soilmoisture_mod,
+            plot_int,
             y_pos,
             vert_limit = NA,
+            # input_dir = dir_input,
+            output_dir = dir_output,
             ...
 ){
-    #     soilmoisture_mod = "model_output/Infiltration_model_output_9.rData"
-    #     output_dir = dir_output
-    #     tstep = 1
-    #     y_pos = SG_y
+    soilmoisture_mod = "model_output/Infiltration_model_output_9.rData"
+    output_dir = dir_output
+    plot_int = plot_interval
+    y_pos = SG_y
 
     ## load modeled gravity response
-    #     sm_mod_data = load(file = paste0(output_dir, soilmoisture_mod))
-    #     sm_mod_data = get(sm_mod_data)
+    sm_mod_data = load(file = paste0(output_dir, soilmoisture_mod))
+    sm_mod_data = get(sm_mod_data)
 
-    # limit data to one time step
-    data_plot = dplyr::filter(sm_mod_data, datetime == tstep)
+    # limit data to desired plotting time steps
+    plot_ts = data.frame(
+                datetime = seq(sm_mod_data$datetime[1], sm_mod_data$datetime[length(sm_mod_data$datetime)], by = plot_int)
+    )
+    data_plot = dplyr::inner_join(plot_ts, sm_mod_data)
     
     # limit data vertically
     if(!is.na(vert_limit)){
@@ -52,7 +57,7 @@ plot_transect_2d = function(
     transect_2d.gg = ggplot(data_plot, aes(x=x, y=Depth)) +
         geom_tile(aes(fill = value)) + #, width = .25) + 
         scale_fill_gradientn(breaks = data_qt, colours=rev(viridis(7)), na.value="red") +
-        # facet_grid(datetime ~ ., scale="free") +
+        facet_grid(datetime ~ ., scale="free") +
         ylab("Depth [m]") + xlab("Profile x [m]") + 
         labs(fill = expression(Delta * "Soil moisture [%VWC]")) +
         theme(legend.position ="bottom",
@@ -61,14 +66,14 @@ plot_transect_2d = function(
     	      panel.grid.major = element_line(colour = "black", linetype = "dotted"),
     	      panel.grid.minor = element_line(colour = "black", linetype = "dotted"))
         
-    # # save plot
-    # png(filename = paste0(output_dir, "Modeled_2d_transect.png"),
-    #                   width = 600,
-    #                   height = 100 * length(plot_ts$datetime),
-    #                   res = 150)
-    # print(transect_2d.gg)
-    # dev.off()
-    # 
+    # save plot
+    png(filename = paste0(output_dir, "Modeled_2d_transect.png"),
+                      width = 600,
+                      height = 100 * length(plot_ts$datetime),
+                      res = 150)
+    print(transect_2d.gg)
+    dev.off()
+    
     return(transect_2d.gg)
 }
 

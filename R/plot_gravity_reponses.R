@@ -17,17 +17,17 @@
 
 plot_gravity_responses = function(
             gravity_obs,
-            gravity_mod = "gravity_response_modeled.rData",
+            gravity_mod,
             input_dir = dir_input,
             output_dir = dir_output,
             dat_tsf = 7,
             ...
 ){
-    # gravity_obs = gravityObservations_input_file
-    # gravity_outside = gravity_response_outside_building
-    # gravity_below = gravity_response_below_building
-    # gravity_reduced = gravity_data_reduced
-    # input_dir = dir_input
+    gravity_obs = gravityObservations_file
+    # gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_", model_runs, ".rData"),
+    gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_9.rData")
+    input_dir = dir_input
+    output_dir = dir_output
 
     # subtract starting value (of first timestep)
     # subtract starting value (of first timestep)
@@ -53,53 +53,62 @@ plot_gravity_responses = function(
     # subtract mean value 
     # gravity_obs_data$value = gravity_obs_data$value - mean(gravity_obs_data$value, na.rm = T)
 
-    # time steps of gravity observations
-    SG_timesteps = data.frame(Timestep = 1:length(gravity_obs_data$gmod[-1]), gmod = gravity_obs_data$gmod[-1])
-
     ## load modeled gravity response
     g_mod_data = load(file = paste0(output_dir, gravity_mod))
-    gravity_mod_data = get(g_mod_data)
+    gravity_mod_data = as.data.frame(get(g_mod_data))
 
     ## create measurement uncertainty of +- 10 %
     # this will be due to unprecise estimated total water mass used in experiment
     gravity_mod_data_over = gravity_mod_data
-    gravity_mod_data_over$gmod = gravity_mod_data_over$gmod * 1.1
+    gravity_mod_data_over$value = gravity_mod_data_over$value * 1.1
     gravity_mod_data_under = gravity_mod_data
-    gravity_mod_data_under$gmod = gravity_mod_data_under$gmod * 0.9 
+    gravity_mod_data_under$value = gravity_mod_data_under$value * 0.9 
     
+    # time steps of gravity observations
+    ts_mod_data = length(gravity_mod_data[,1])
+    # SG_timesteps = data.frame(datetime = 1:length(gravity_obs_data$gmod[-1]), value = gravity_obs_data$gmod[-1])
+    SG_timesteps = data.frame(datetime = 1:ts_mod_data, value = gravity_obs_data$gmod[2:(ts_mod_data + 1)])
+
     ## combine datasets
     gmod = rbind(
              cbind(SG_timesteps, Scenario="Observed gravity response"),
-    	     cbind(gravity_mod_data, Scenario="Infiltration model"),
-    	     cbind(gravity_mod_data_over, Scenario="uncertainty"),
-    	     cbind(gravity_mod_data_under, Scenario="uncertainty")
+    	     cbind(gravity_mod_data, Scenario="Infiltration model")#,
+             # cbind(gravity_mod_data_over, Scenario="uncertainty"),
+             # cbind(gravity_mod_data_under, Scenario="uncertainty")
              )
+
+    # add uncertainty of +- 10 %
+    gmod$ymin = gmod$value * 0.9
+    gmod$ymax = gmod$value * 1.1 
     # adjust factor levels for plotting order
     gmod$Scenario = factor(gmod$Scenario, levels=c("uncertainty","Observed gravity response", "Infiltration model"))
 
     # plot
-    gravity_ts. = ggplot(gmod, aes(x=Timestep, y=gmod, colour=Scenario)) + geom_line(size=1.5) + 
+    gravity_ts.gg = ggplot(gmod, aes(x=datetime, y=value, fill = Scenario, colour=Scenario)) +
+        geom_ribbon(data = dplyr::filter(gmod, Scenario == "Infiltration model"), aes(ymin=ymin, ymax=ymax), fill = "grey", colour = NA) + 
+        geom_line(size=1.5) + 
     	ylab("Gravity [nm/s²]") + xlab("Time since start of experiment [min]") +
-        scale_color_manual(values = c("lightgrey","red","blue"), breaks=c("Observed gravity response", "Infiltration model")) + 
+        scale_color_manual(values = c("red","blue"), breaks=c("Observed gravity response", "Infiltration model")) + 
+        # scale_color_manual(values = c("grey","red","blue"), breaks=c("Observed gravity response", "Infiltration model")) + 
         theme(
-         legend.position = "bottom",
+         # legend.position = "bottom",
          legend.title = element_blank(),
-    	 legend.text=element_text(size=18),
-    	 panel.background = element_rect(fill="transparent"),
+         # legend.text=element_text(size=18),
+         # panel.background = element_rect(fill="transparent"),
          panel.grid.major = element_line(colour = "black", linetype = "dotted")
+         # axis.title=element_text(size=20,face="bold"),
+		 # axis.text=element_text(size=15,face="bold"),
          ) +
         guides(colour = guide_legend(nrow = 2))
     
     # save plot
     png(filename = paste0(output_dir, "Gravity_responses.png"),
-                      width = 600,
+                      width = 800,
                       height = 400,
                       res = 150)
     print(gravity_ts.gg)
     dev.off()
-    # print on screen
-    # plot(gravity_ts.gg)
-    # return NULL
+
     return(gravity_ts.gg)
 }
 

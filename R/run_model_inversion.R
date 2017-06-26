@@ -35,118 +35,117 @@ run_model_inversion = function(
             latflow_fac_start = latflow_fac_start,
             output_dir, 
             input_dir,
+            inner_inum,
             ...
 ){
-    ## create necessary output directories
-    if(!file.exists(paste0(output_dir, "model_output"))){
-        dir.create(file.path(output_dir, "model_output"))
-        dir.create(file.path(output_dir, "model_output", "plots"))
-        dir.create(file.path(output_dir, "model_output", "raw"))
-    }
+  ## create necessary output directories
+  if(!file.exists(paste0(output_dir, "model_output"))){
+      dir.create(file.path(output_dir, "model_output"))
+      dir.create(file.path(output_dir, "model_output", "plots"))
+      dir.create(file.path(output_dir, "model_output", "raw"))
+  }
 
-    # load config file
-    load(file=paste0(output_dir, "configfile.rdata"))
-    macropores = configfile$use_macro
-    macro2 = configfile$two_macro
+  # load config file
+  load(file=paste0(output_dir, "configfile.rdata"))
+  macropores = configfile$use_macro
+  macro2 = configfile$two_macro
 
-    # prepare model input data and parameter boundaries
-    if(macropores){
-      if(macro2){
-        # combine input parameters
-        param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_macro2_min, dtheta_other_min, mdepth_min, mdepth2_min, latflow_fac_min),
-                              maximum = c(dtheta_macro_max, dtheta_macro2_max, dtheta_other_max, mdepth_max, mdepth2_max, latflow_fac_max))
-        # combine start parameter values
-        param_startvalue = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start)
-        # set name of model to use
-        model = "inf_model_3d_2macro"
-      }else{
-        # combine input parameters
-        param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_other_min, mdepth_min, latflow_fac_min),
-                              maximum = c(dtheta_macro_max, dtheta_other_max, mdepth_max, latflow_fac_max))
-        # combine start parameter values
-        param_startvalue = c(dtheta_macro_start, dtheta_other_start, mdepth_start, latflow_fac_start)
-        # set name of model to use
-        model = "inf_model_3d_macro"
-      }
+  # prepare model input data and parameter boundaries
+  if(macropores){
+    if(macro2){
+      # combine input parameters
+      param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_macro2_min, dtheta_other_min, mdepth_min, mdepth2_min, latflow_fac_min),
+                            maximum = c(dtheta_macro_max, dtheta_macro2_max, dtheta_other_max, mdepth_max, mdepth2_max, latflow_fac_max))
+      # combine start parameter values
+      param_startvalue = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start)
+      # set name of model to use
+      model = "inf_model_3d_2macro"
     }else{
       # combine input parameters
-      param_bounds = data.frame(minimum = c(dtheta_other_min, mdepth_min, latflow_fac_min),
-                            maximum = c(dtheta_other_max, mdepth_max, latflow_fac_max))
+      param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_other_min, mdepth_min, latflow_fac_min),
+                            maximum = c(dtheta_macro_max, dtheta_other_max, mdepth_max, latflow_fac_max))
       # combine start parameter values
-      param_startvalue = c(dtheta_other_start, mdepth_start, latflow_fac_start)
+      param_startvalue = c(dtheta_macro_start, dtheta_other_start, mdepth_start, latflow_fac_start)
       # set name of model to use
-      model = "inf_model_3d_single"
+      model = "inf_model_3d_macro"
     }
-    
-    # set counting parameter
-    # this is used for naming figures and files for individiual model runs within the optimization routine
-    n_param = 1 
-    
-    # store actual working directory
-    wd_now = getwd()
-    # set working directory
-    setwd(dir_output)
+  }else{
+    # combine input parameters
+    param_bounds = data.frame(minimum = c(dtheta_other_min, mdepth_min, latflow_fac_min),
+                          maximum = c(dtheta_other_max, mdepth_max, latflow_fac_max))
+    # combine start parameter values
+    param_startvalue = c(dtheta_other_start, mdepth_start, latflow_fac_start)
+    # set name of model to use
+    model = "inf_model_3d_single"
+  }
+  
+  # set counting parameter
+  # this is used for naming figures and files for individiual model runs within the optimization routine
+  n_param <<- inner_inum
+  
+  # store actual working directory
+  wd_now = getwd()
+  # set working directory
+  setwd(dir_output)
 
-    # get number of desired model runs
-    n_iterations = configfile$model_runs
-    
-    ## run optimization
-    opt_result = optim_dds(
-        # objective_function = inf_model_3d_2macro, #set model to use, according to input parameters supplied
-        objective_function = get(model), #set model to use, according to input parameters supplied
-        number_of_parameters = length(param_bounds[,1]),
-        number_of_particles =  1,
-        max_number_function_calls= n_iterations,
-        r=0.2,
-        abstol = -Inf,
-        reltol = -Inf,
-        max_wait_iterations=50,
-        parameter_bounds = param_bounds,
-        initial_estimates = param_startvalue,
-        lhc_init=FALSE,
-        do_plot = NULL,
-        wait_for_keystroke = FALSE,
-        # logfile=  ppso_log,
-        # projectfile = "projectfile_to_resume",
-        load_projectfile = "try",
-        break_file=NULL,
-        plot_progress=FALSE,
-        tryCall=FALSE)
+  # get number of desired model runs
+  n_iterations = configfile$model_runs
+  
+  ## run optimization
+  opt_result = optim_dds(
+      # objective_function = inf_model_3d_2macro, #set model to use, according to input parameters supplied
+      objective_function = get(model), #set model to use, according to input parameters supplied
+      number_of_parameters = length(param_bounds[,1]),
+      number_of_particles =  1,
+      max_number_function_calls= n_iterations,
+      r=0.2,
+      abstol = -Inf,
+      reltol = -Inf,
+      max_wait_iterations=50,
+      parameter_bounds = param_bounds,
+      initial_estimates = param_startvalue,
+      lhc_init=FALSE,
+      do_plot = NULL,
+      wait_for_keystroke = FALSE,
+      # logfile=  ppso_log,
+      # projectfile = "projectfile_to_resume",
+      load_projectfile = "try",
+      break_file=NULL,
+      plot_progress=FALSE,
+      tryCall=FALSE)
 
-    # set previous working directory
-    setwd(wd_now)
+  # set previous working directory
+  setwd(wd_now)
 
   ## combine and save model results and model input
-  # dir_input = configfile$dir_input
-  # dir_output = configfile$dir_output
-  # precip_time = configfile$precip_time
-  # IntensityDistribution = configfile$IntensityDistribution
-  # water_vol_min = configfile$water_vol_min
-  # gcompfile = configfile$gcompfile
-  # gravityObs = configfile$gravityObs
-  # mb_permitted_error = configfile$mb_permitted_error
-
   # scenario information
-  model_info = list(dir_input = configfile$dir_input,
+  model_info = data.frame(dir_input = configfile$dir_input,
                        dir_output = configfile$dir_output,
                        duration = configfile$precip_time,
                        total_water_volume = configfile$water_vol_min,
                        water_distribution_file = configfile$IntensityDistribution_file,
                        gravity_component_grid_file = configfile$gcomp_file,
-                       gravity_observations_file = configfile$gravity_observations_file,
+                       gravity_observations_file = configfile$gravityObservations_file,
                        permitted_massbalance_error = configfile$mb_permitted_error,
                        macropore_layer = configfile$use_macro,
                        macropore_layer2 = configfile$two_macro,
                        infiltration_dynamics = configfile$inf_dynamics,
                        n_iterations = configfile$model_runs,
                        plot_interval = configfile$plot_interval,
-                       plot_transect_2d = configfile$plot_transect_loc
+                       plot_transect_2d = configfile$plot_transect_loc,
+                       opt_value = opt_result$value,
+                       opt_function_calls = opt_result$function_calls,
+                       opt_break_flag = opt_result$break_flag,
+                       stringsAsFactors = F
                        )
-  
-  # combine optimization with scenario information
-  stats = cbind(model_info, opt_result)
-  
+
+  # add estimated optimal parameter values
+  info_columns_num = length(model_info)
+  for(param_num in 1:length(param_bounds[,1])){
+    model_info[,(param_num + info_columns_num)] = opt_result$par[param_num]
+  }
+
   # return model statistics and parameters
-  return(stats)
+  return(model_info)
 }
 

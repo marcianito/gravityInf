@@ -441,10 +441,13 @@ if(!inverse){
               dtheta_other_start = dtheta_other_start,
               latflow_fac_start = latflow_fac_start,
               input_dir = dir_input,
-              output_dir = dir_output
+              output_dir = dir_output,
+              inner_inum = 1
   )
 
   print("Finished optimization.")
+  # remove iteration parameter for inner optimization function calls
+  rm(n_param)
 # end of inversion / conversion mode infiltration model runs
 }
 
@@ -463,7 +466,8 @@ if(plot_data){
 # plot LAST (optimized) model run scenario
   plot_gravity_responses(
               gravity_obs = gravityObservations_file,
-              gravity_mod = "gravity_response_modeled.rData",
+              # gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_", model_runs, ".rData"),
+              gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_9.rData"),
               input_dir = dir_input,
               output_dir = dir_output
   )
@@ -479,10 +483,13 @@ if(plot_data){
 if(plot_data){
   message("Plotting 2d transect of modeled soil moisture data..")
 
-  plot_transect_2d(
-              soilmoisture_mod = "infiltration_model_output.rData",
-              plot_ts = plot_interval_ts,
-              input_dir = dir_input,
+  plot_transects_2d(
+              # soilmoisture_mod = paste0("model_output/Infiltration_model_output_", model_runs, ".rData"),
+              soilmoisture_mod = paste0("model_output/Infiltration_model_output_9.rData"),
+              plot_int = plot_interval,
+              y_pos = SG_y,
+              vert_limit = NA,
+              # input_dir = dir_input,
               output_dir = dir_output
   )
   message("done.")
