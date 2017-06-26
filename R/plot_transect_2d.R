@@ -56,8 +56,8 @@ plot_transect_2d = function(
         ylab("Depth [m]") + xlab("Profile x [m]") + 
         labs(fill = expression(Delta * "Soil moisture [%VWC]")) +
         theme(legend.position ="bottom",
-    	      legend.text=element_text(size=17),
-    	      legend.title=element_text(size=19),
+              # legend.text=element_text(size=17),
+              # legend.title=element_text(size=19),
     	      panel.grid.major = element_line(colour = "black", linetype = "dotted"),
     	      panel.grid.minor = element_line(colour = "black", linetype = "dotted"))
         

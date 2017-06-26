@@ -91,10 +91,10 @@ SG_y = 0
 SG_Z = 0
 SG_SensorHeight = 1.5 
 # UTM coordinate system
-SG_x = 4564082.00
-SG_y = 5445669.70
-SG_Z = 609.755
-SG_SensorHeight = 1.5 
+# SG_x = 4564082.00
+# SG_y = 5445669.70
+# SG_Z = 609.755
+# SG_SensorHeight = 1.5 
 
 ## Model domain
 # in [m]
@@ -103,8 +103,8 @@ sprinklingArea_x = c(-7.5, 7.5) # min, max
 sprinklingArea_y = c(-7.5, 7.5) # min, max
 # grid3d_depth = c(-3, 0) # min, max
 # UTM
-sprinklingArea_x = c(SG_x - 7.5, SG_x + 7.5) # min, max
-sprinklingArea_y = c(SG_y - 7.5, SG_y + 7.5) # min, max
+# sprinklingArea_x = c(SG_x - 7.5, SG_x + 7.5) # min, max
+# sprinklingArea_y = c(SG_y - 7.5, SG_y + 7.5) # min, max
 # grid3d_depth = c(SG_Z, SG_Z - 3) # min, max
 
 ## Model discretization
@@ -152,7 +152,7 @@ data_tsf = 7
 # should be absolute
 # if left empty, a flat topographie will be assumed
 DEM_input_file = ""
-DEM_input_file = "WE_UP_TO_300m_05m.asc"
+# DEM_input_file = "WE_UP_TO_300m_05m.asc"
 
 ## Water intensity distribution file
 # IntensityDistribution_file = "waterIntensity_measured.csv"
@@ -409,7 +409,6 @@ if(!inverse){
               mdepth2 = mdepth2_start,
               dtheta_other = dtheta_other_start,
               latflow_fac = latflow_fac_start,
-              input_dir = dir_input,
               output_dir = dir_output
   )
 

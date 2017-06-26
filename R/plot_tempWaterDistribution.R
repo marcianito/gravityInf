@@ -41,8 +41,8 @@ plot_tempWaterDistribution <- function(sm_mod_data, plotvar){
                scale_fill_gradientn(breaks = data_qt, colours=rev(viridis(7)), na.value="red") +
                labs(fill = expression(Delta * "Soil moisture [%VWC]")) +
                theme(legend.position ="bottom",
-           	      legend.text=element_text(size=17),
-           	      legend.title=element_text(size=19),
+                     # legend.text=element_text(size=17),
+                     # legend.title=element_text(size=19),
            	      panel.grid.major = element_line(colour = "black", linetype = "dotted"),
            	      panel.grid.minor = element_line(colour = "black", linetype = "dotted"))
   return(data.gg) 
