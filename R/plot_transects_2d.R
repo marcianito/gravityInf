@@ -25,10 +25,10 @@ plot_transects_2d = function(
             output_dir = dir_output,
             ...
 ){
-    soilmoisture_mod = "model_output/Infiltration_model_output_9.rData"
-    output_dir = dir_output
-    plot_int = plot_interval
-    y_pos = SG_y
+    # soilmoisture_mod = "model_output/Infiltration_model_output_9.rData"
+    # output_dir = dir_output
+    # plot_int = plot_interval
+    # y_pos = SG_y
 
     ## load modeled gravity response
     sm_mod_data = load(file = paste0(output_dir, soilmoisture_mod))

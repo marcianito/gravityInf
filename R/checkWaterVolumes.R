@@ -16,7 +16,7 @@ checkWaterVolumes = function(sm_mod_data,
                               cell_volume,
                               infWater_timestep,
                               ts_check = 1,
-                              plotting = FALSE
+                              plotting = F
 ){
   # set chosen check-method
   switch(whichCheck,

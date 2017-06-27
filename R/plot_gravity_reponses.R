@@ -23,11 +23,11 @@ plot_gravity_responses = function(
             dat_tsf = 7,
             ...
 ){
-    gravity_obs = gravityObservations_file
-    # gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_", model_runs, ".rData"),
-    gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_9.rData")
-    input_dir = dir_input
-    output_dir = dir_output
+    # gravity_obs = gravityObservations_file
+    # # gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_", model_runs, ".rData"),
+    # gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_9.rData")
+    # input_dir = dir_input
+    # output_dir = dir_output
 
     # subtract starting value (of first timestep)
     # subtract starting value (of first timestep)

@@ -12,20 +12,28 @@
 #' @examples missing
 
 run_model_conversion = function(
-            dtheta_macro_start = dtheta_macro_start,
-            dtheta_macro2_start = dtheta_macro2_start,
-            mdepth_start = mdepth_start,
-            mdepth2_start = mdepth2_start,
-            dtheta_other_start = dtheta_other_start,
-            latflow_fac_start = latflow_fac_start,
+            dtheta_macro,
+            dtheta_macro2,
+            mdepth,
+            mdepth2,
+            dtheta_other,
+            latflow_fac,
             output_dir, 
             ...
 ){
+   # dtheta_macro = dtheta_macro_start
+   # dtheta_macro2 = dtheta_macro2_start
+   # mdepth = mdepth_start
+   # mdepth2 = mdepth2_start
+   # dtheta_other = dtheta_other_start
+   # latflow_fac = latflow_fac_start
+   # output_dir = dir_output
+
   ## create necessary output directories
   if(!file.exists(paste0(output_dir, "model_output"))){
       dir.create(file.path(output_dir, "model_output"))
       dir.create(file.path(output_dir, "model_output", "plots"))
-      # dir.create(file.path(output_dir, "model_output", "raw"))
+      dir.create(file.path(output_dir, "model_output", "raw"))
   }
 
   # load config file
@@ -33,32 +41,45 @@ run_model_conversion = function(
   macropores = configfile$use_macro
   macro2 = configfile$two_macro
 
+  # set counting parameter
+  # this is used for naming figures and files for individiual model runs within the optimization routine
+  n_param <<- 1
+  # store actual working directory
+  wd_now = getwd()
+  # set working directory
+  setwd(dir_output)
+
   # prepare model input data and parameter boundaries
   if(macropores){
     if(macro2){
       # combine input parameters
-      param_startvalue = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start)
+      parameter_input = c(dtheta_macro, dtheta_macro2, dtheta_other, mdepth, mdepth2, latflow_fac)
       # run model 
-      model_result = inf_model_3d_2macro_conv(
-                        param_vec = param_startvalue
+      model_result = inf_model_3d_2macro(
+                        param_vec = parameter_input
                      )
     }else{
       # combine input parameters
-      param_startvalue = c(dtheta_macro_start, dtheta_other_start, mdepth_start, latflow_fac_start)
+      parameter_input = c(dtheta_macro, dtheta_other, mdepth, latflow_fac)
       # run model 
-      model_result = inf_model_3d_macro_conv(
-                        param_vec = param_startvalue
+      model_result = inf_model_3d_macro(
+                        param_vec = parameter_input
                      )
     }
   }else{
     # combine input parameters
-    param_startvalue = c(dtheta_other_start, mdepth_start, latflow_fac_start)
+    parameter_input = c(dtheta_other, mdepth, latflow_fac)
       # run model 
-      model_result = inf_model_3d_single_conv(
-                        param_vec = param_startvalue
+      model_result = inf_model_3d_single(
+                        param_vec = parameter_input
                      )
   }
-    
+  # output to user
+  print(paste0("Model results and figures were saved to: ", output_dir, "model_output/."))
+
+  # set previous working directory
+  setwd(wd_now)
+
   ## combine and save model results and model input
   # scenario information
   model_info = data.frame(dir_input = configfile$dir_input,
@@ -72,7 +93,7 @@ run_model_conversion = function(
                        macropore_layer = configfile$use_macro,
                        macropore_layer2 = configfile$two_macro,
                        infiltration_dynamics = configfile$inf_dynamics,
-                       n_iterations = configfile$model_runs,
+                       model_kge = model_result,
                        plot_interval = configfile$plot_interval,
                        plot_transect_2d = configfile$plot_transect_loc,
                        stringsAsFactors = F
@@ -80,10 +101,10 @@ run_model_conversion = function(
 
   # add estimated optimal parameter values
   info_columns_num = length(model_info)
-  for(param_num in 1:length(param_startvalue)){
-    model_info[,(param_num + info_columns_num)] = param_startvalue[param_num]
+  for(param_num in 1:length(parameter_input)){
+    model_info[,(param_num + info_columns_num)] = parameter_input[param_num]
   }
-
+  
   # return model statistics and parameters
   return(model_info)
 }

@@ -21,6 +21,11 @@
 # or write to mreich@posteo.de
 ####################
 
+## initial message
+print("Welcome to gravityInf!")
+print("This package will now run an infiltration scenario model,
+      in order to find site dominant infiltration dynamics, based on your input.")
+
 ## developing
 # library(HyGra)
 library(devtools)
@@ -30,9 +35,9 @@ load_all("gravityInf")
 # create package
 # devtools::create("gravityInf")
 # create docu
-library(roxygen2)
-setwd("/home/mreich/Dokumente/written/ResearchRepos/gravityInf")
-document()
+# library(roxygen2)
+# setwd("/home/mreich/Dokumente/written/ResearchRepos/gravityInf")
+# document()
 # install package locally
 # not working !? -> use load_all() above
 # install()
@@ -445,8 +450,6 @@ if(!inverse){
   )
 
   print("Finished optimization.")
-  # remove iteration parameter for inner optimization function calls
-  rm(n_param)
 # end of inversion / conversion mode infiltration model runs
 }
 
@@ -462,14 +465,23 @@ print("done.")
 if(plot_data){
   message("Plotting modeled and observed gravity signal..")
 
-# plot LAST (optimized) model run scenario
+if(!inverse){
   plot_gravity_responses(
               gravity_obs = gravityObservations_file,
-              # gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_", model_runs, ".rData"),
-              gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_9.rData"),
+              gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_1.rData"),
               input_dir = dir_input,
               output_dir = dir_output
   )
+}else{
+# plot LAST (optimized) model run scenario
+  plot_gravity_responses(
+              gravity_obs = gravityObservations_file,
+              gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_", (n_param - 1), ".rData"),
+              # gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_9.rData"),
+              input_dir = dir_input,
+              output_dir = dir_output
+  )
+}
   message("done.")
 }else{
   message("No plotting desired.")
@@ -482,29 +494,42 @@ if(plot_data){
 if(plot_data){
   message("Plotting 2d transect of modeled soil moisture data..")
 
+if(!inverse){
   plot_transects_2d(
-              # soilmoisture_mod = paste0("model_output/Infiltration_model_output_", model_runs, ".rData"),
-              soilmoisture_mod = paste0("model_output/Infiltration_model_output_9.rData"),
+              soilmoisture_mod = paste0("model_output/Infiltration_model_output_1.rData"),
+              plot_int = plot_interval,
+              y_pos = SG_y,
+              vert_limit = NA,
+              output_dir = dir_output
+  )
+}else{
+  plot_transects_2d(
+              soilmoisture_mod = paste0("model_output/Infiltration_model_output_", (n_param - 1), ".rData"),
+              # soilmoisture_mod = paste0("model_output/Infiltration_model_output_9.rData"),
               plot_int = plot_interval,
               y_pos = SG_y,
               vert_limit = NA,
               # input_dir = dir_input,
               output_dir = dir_output
   )
+}
   message("done.")
 }else{
   message("No plotting desired.")
 }
+
+# remove iteration parameter for inner optimization function calls
+rm(n_param)
 
 #########################################
 ## end CALCULATIONS
 #########################################
 
 message("All calculations have finished.")
-message("Please have a look at the output file, located at: ")
-message(dir_output)
+message(paste0("Please have a look at the output file, located at: ", dir_output))
 
-message("")
+message("If you use this software in your publication, please cite this package.
+        Information can be obtained using citation()")
 
 
 ##########

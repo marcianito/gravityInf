@@ -464,7 +464,7 @@ setDF(Infiltration_model_results)
 print("Water balance of every time step:")
 # # check water of each timestep
 plots=F
-plot(checkWaterVolumes(
+print(checkWaterVolumes(
         sm_mod_data = Infiltration_model_results,
         whichCheck = "waterpertimestep",
         inf_time = precip_time,
