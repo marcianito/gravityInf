@@ -48,7 +48,6 @@ z = configfile$discr_z
 mb_permitted_error = configfile$mb_permitted_error
 macropore_layer = configfile$use_macro
 macropore_layer2 = configfile$two_macro
-infiltration_dynamics = configfile$inf_dynamics
 n_iterations = configfile$model_runs
 plot_interval = configfile$plot_interval
 plot_transect_2d = configfile$plot_transect_loc
@@ -128,8 +127,14 @@ mdepth2 = round(param_vec[5],1)
 # lateral flow factor (seperate into lateral and vertical flow)
 latflow_fac = param_vec[6]
 vertflow_fac = 1 - latflow_fac
+# infiltration dynamics
+# round to integer values !!
+# in order to have discrete values for the individual process
+inf_dyn = round(param_vec[7])
 
 ####################
+## validity of some assumptions
+#
 ## check validity of chosen thicknesses / depth of both infiltration processes
 # if(pipedepth <= mdepth){
 #   kge_fit = 1
@@ -142,6 +147,13 @@ if(mdepth2 >= mdepth){
   return(kge_fit) 
 # if everything is okay, run normally
 }else{ 
+
+# ## check if [rounded] infiltration dynamics is in acordance with its set limitations (concerning processes)
+# if((inf_dyn < inf_dyn_min) | (inf_dyn > inf_dyn_max)){
+#   kge_fit = 1
+#   return(kge_fit) 
+# # if everything is okay, run normally
+# }else{ 
 
 ##########################################
 ## build up model domain space
@@ -174,12 +186,48 @@ tsx = dplyr::mutate(Irrigation_grid,
       dplyr::mutate(prevalue = 0)
 
 ## tag vertical layers with infiltration process
+
+## check which infiltration dynamic is beeing applied right now
+# and respectively adjust the filling of cells
+## availlable are:
+# these are (and have to be) hard-coded !!
+# Wfa = 1
+# perched water table = 2
+# by-pass flow = 3
+
+## Wfa
+if(inf_dyn == 1){
 layer_params = data.frame(Depth = zlayers,
                          infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("other",(length(zlayers) - mdepth2_layer))),
                          nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), seq(1,length.out=(length(zlayers) - mdepth2_layer))),
-                         # nlayer = c(rep(1,mdepth_layer), seq(1,length.out=(length(zlayers) - mdepth_layer))),
                          dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_other,(length(zlayers) - mdepth2_layer)))
               )
+}
+## perched water table
+if(inf_dyn == 2){
+layer_params = data.frame(Depth = zlayers,
+                         infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("other",(length(zlayers) - mdepth2_layer))),
+                         nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), seq(1,length.out=(length(zlayers) - mdepth2_layer))),
+                         dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_other,(length(zlayers) - mdepth2_layer)))
+              )
+}
+## by-pass flow
+if(inf_dyn == 3){
+layer_params = data.frame(Depth = zlayers,
+                         infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("other",(length(zlayers) - mdepth2_layer))),
+                         nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), seq(1,length.out=(length(zlayers) - mdepth2_layer))),
+                         dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_other,(length(zlayers) - mdepth2_layer)))
+              )
+}
+## DISTINGUISH order of nlayers for process "other", DEPTH (!?) for perched water table and by-pass flow !!
+
+# old version
+# layer_params = data.frame(Depth = zlayers,
+#                          infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("other",(length(zlayers) - mdepth2_layer))),
+#                          nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), seq(1,length.out=(length(zlayers) - mdepth2_layer))),
+#                          # nlayer = c(rep(1,mdepth_layer), seq(1,length.out=(length(zlayers) - mdepth_layer))),
+#                          dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_other,(length(zlayers) - mdepth2_layer)))
+#               )
 
 ## tag cells with layer parameters
 tsx = inner_join(tsx, layer_params) # %>%
@@ -373,9 +421,38 @@ tsx$lat_c4[which(tsx$lat_c4 %in% cells_sat$cell_id)] = NA
 
 ## determine which vertical cell of a column gets filled in the next timestep
 ## depends on saturation state of cell
+
+## check which infiltration dynamic is beeing applied right now
+# and respectively adjust the filling of cells
+## availlable are:
+# these are (and have to be) hard-coded !!
+# Wfa = 1
+# perched water table = 2
+# by-pass flow = 3
+
+## Wfa
+if(inf_dyn == 1){
 layerfilling = dplyr::mutate(tsx, unsaturated = ifelse(sat, 10000, nlayer)) %>%
                group_by(column, infProcess) %>%
                dplyr::summarize(layerfill = min(unsaturated, na.rm=T))
+}
+## perched water table
+## ?? HOW TO DO THAT ??
+if(inf_dyn == 2){
+layerfilling = dplyr::mutate(tsx, unsaturated = ifelse(sat, 10000, nlayer)) %>%
+               group_by(column, infProcess) %>%
+               dplyr::summarize(layerfill = min(unsaturated, na.rm=T))
+}
+## by-pass flow
+# this is identical with Wfa (1)
+# only the INITIAL depth has to change
+# this is set above, at initializing the tsx matrix !!
+if(inf_dyn == 3){
+layerfilling = dplyr::mutate(tsx, unsaturated = ifelse(sat, 10000, nlayer)) %>%
+               group_by(column, infProcess) %>%
+               dplyr::summarize(layerfill = min(unsaturated, na.rm=T))
+}
+### update which layers to fill
 tsx = dplyr::select(tsx, - layerfill) %>%
       inner_join(layerfilling)
 
@@ -581,6 +658,8 @@ n_param <<- n_param + 1
 ## KGE
 return(kge_fit) 
 
+# ## else statement, runs if infiltration dynamics are as initially defined
+# }
 ## else statement, runs if otherdepth > mdepth
 }
 

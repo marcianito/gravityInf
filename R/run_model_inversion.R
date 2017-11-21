@@ -27,12 +27,15 @@ run_model_inversion = function(
             mdepth2_max,
             latflow_fac_min,
             latflow_fac_max,
+            inf_dynamics_min,
+            inf_dynamics_max,
             dtheta_macro_start,
             dtheta_macro2_start,
             mdepth_start,
             mdepth2_start,
             dtheta_other_start,
             latflow_fac_start,
+            inf_dynamics_start,
             output_dir, 
             input_dir,
             inner_inum,
@@ -54,27 +57,27 @@ run_model_inversion = function(
   if(macropores){
     if(macro2){
       # combine input parameters
-      param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_macro2_min, dtheta_other_min, mdepth_min, mdepth2_min, latflow_fac_min),
-                            maximum = c(dtheta_macro_max, dtheta_macro2_max, dtheta_other_max, mdepth_max, mdepth2_max, latflow_fac_max))
+      param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_macro2_min, dtheta_other_min, mdepth_min, mdepth2_min, latflow_fac_min, inf_dynamics_min),
+                            maximum = c(dtheta_macro_max, dtheta_macro2_max, dtheta_other_max, mdepth_max, mdepth2_max, latflow_fac_max, inf_dynamics_max))
       # combine start parameter values
-      param_startvalue = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start)
+      param_startvalue = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start, inf_dynamics_start)
       # set name of model to use
       model = "inf_model_3d_2macro"
     }else{
       # combine input parameters
-      param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_other_min, mdepth_min, latflow_fac_min),
-                            maximum = c(dtheta_macro_max, dtheta_other_max, mdepth_max, latflow_fac_max))
+      param_bounds = data.frame(minimum = c(dtheta_macro_min, dtheta_other_min, mdepth_min, latflow_fac_min, inf_dynamics_min),
+                            maximum = c(dtheta_macro_max, dtheta_other_max, mdepth_max, latflow_fac_max, inf_dynamics_max))
       # combine start parameter values
-      param_startvalue = c(dtheta_macro_start, dtheta_other_start, mdepth_start, latflow_fac_start)
+      param_startvalue = c(dtheta_macro_start, dtheta_other_start, mdepth_start, latflow_fac_start, inf_dynamics_start)
       # set name of model to use
       model = "inf_model_3d_macro"
     }
   }else{
     # combine input parameters
-    param_bounds = data.frame(minimum = c(dtheta_other_min, mdepth_min, latflow_fac_min),
-                          maximum = c(dtheta_other_max, mdepth_max, latflow_fac_max))
+    param_bounds = data.frame(minimum = c(dtheta_other_min, mdepth_min, latflow_fac_min, inf_dynamics_min),
+                          maximum = c(dtheta_other_max, mdepth_max, latflow_fac_max, inf_dynamics_max))
     # combine start parameter values
-    param_startvalue = c(dtheta_other_start, mdepth_start, latflow_fac_start)
+    param_startvalue = c(dtheta_other_start, mdepth_start, latflow_fac_start, inf_dynamics_start)
     # set name of model to use
     model = "inf_model_3d_single"
   }
@@ -129,7 +132,6 @@ run_model_inversion = function(
                        permitted_massbalance_error = configfile$mb_permitted_error,
                        macropore_layer = configfile$use_macro,
                        macropore_layer2 = configfile$two_macro,
-                       infiltration_dynamics = configfile$inf_dynamics,
                        n_iterations = configfile$model_runs,
                        plot_interval = configfile$plot_interval,
                        plot_transect_2d = configfile$plot_transect_loc,

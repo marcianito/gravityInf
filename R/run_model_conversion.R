@@ -18,6 +18,7 @@ run_model_conversion = function(
             mdepth2,
             dtheta_other,
             latflow_fac,
+            inf_dynamics,
             output_dir, 
             ...
 ){
@@ -53,14 +54,14 @@ run_model_conversion = function(
   if(macropores){
     if(macro2){
       # combine input parameters
-      parameter_input = c(dtheta_macro, dtheta_macro2, dtheta_other, mdepth, mdepth2, latflow_fac)
+      parameter_input = c(dtheta_macro, dtheta_macro2, dtheta_other, mdepth, mdepth2, latflow_fac, inf_dynamics)
       # run model 
       model_result = inf_model_3d_2macro(
                         param_vec = parameter_input
                      )
     }else{
       # combine input parameters
-      parameter_input = c(dtheta_macro, dtheta_other, mdepth, latflow_fac)
+      parameter_input = c(dtheta_macro, dtheta_other, mdepth, latflow_fac, inf_dynamics)
       # run model 
       model_result = inf_model_3d_macro(
                         param_vec = parameter_input
@@ -68,7 +69,7 @@ run_model_conversion = function(
     }
   }else{
     # combine input parameters
-    parameter_input = c(dtheta_other, mdepth, latflow_fac)
+    parameter_input = c(dtheta_other, mdepth, latflow_fac, inf_dynamics)
       # run model 
       model_result = inf_model_3d_single(
                         param_vec = parameter_input
@@ -92,7 +93,6 @@ run_model_conversion = function(
                        permitted_massbalance_error = configfile$mb_permitted_error,
                        macropore_layer = configfile$use_macro,
                        macropore_layer2 = configfile$two_macro,
-                       infiltration_dynamics = configfile$inf_dynamics,
                        model_kge = model_result,
                        plot_interval = configfile$plot_interval,
                        plot_transect_2d = configfile$plot_transect_loc,
