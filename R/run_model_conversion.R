@@ -19,6 +19,7 @@ run_model_conversion = function(
             dtheta_other,
             latflow_fac,
             inf_dynamics,
+            pdepth,
             output_dir, 
             ...
 ){
@@ -54,14 +55,14 @@ run_model_conversion = function(
   if(macropores){
     if(macro2){
       # combine input parameters
-      parameter_input = c(dtheta_macro, dtheta_macro2, dtheta_other, mdepth, mdepth2, latflow_fac, inf_dynamics)
+      parameter_input = c(dtheta_macro, dtheta_macro2, dtheta_other, mdepth, mdepth2, latflow_fac, inf_dynamics, pdepth)
       # run model 
       model_result = inf_model_3d_2macro(
                         param_vec = parameter_input
                      )
     }else{
       # combine input parameters
-      parameter_input = c(dtheta_macro, dtheta_other, mdepth, latflow_fac, inf_dynamics)
+      parameter_input = c(dtheta_macro, dtheta_other, mdepth, latflow_fac, inf_dynamics, pdepth)
       # run model 
       model_result = inf_model_3d_macro(
                         param_vec = parameter_input
@@ -69,7 +70,7 @@ run_model_conversion = function(
     }
   }else{
     # combine input parameters
-    parameter_input = c(dtheta_other, mdepth, latflow_fac, inf_dynamics)
+    parameter_input = c(dtheta_other, mdepth, latflow_fac, inf_dynamics, pdepth)
       # run model 
       model_result = inf_model_3d_single(
                         param_vec = parameter_input
@@ -82,6 +83,12 @@ run_model_conversion = function(
   setwd(wd_now)
 
   ## combine and save model results and model input
+  # find lower infiltration process investigated and convert from number to word for better result recognition
+  switch(inf_dynamics,
+         "1" = {inf_process = "Wfa"},
+         "2" = {inf_process = "Perched water table"},
+         "3" = {inf_process = "By-pass flow"}
+         )
   # scenario information
   model_info = data.frame(dir_input = configfile$dir_input,
                        dir_output = configfile$dir_output,
@@ -94,6 +101,7 @@ run_model_conversion = function(
                        macropore_layer = configfile$use_macro,
                        macropore_layer2 = configfile$two_macro,
                        model_kge = model_result,
+                       inf_process_tested = inf_process,
                        plot_interval = configfile$plot_interval,
                        plot_transect_2d = configfile$plot_transect_loc,
                        stringsAsFactors = F

@@ -131,6 +131,9 @@ vertflow_fac = 1 - latflow_fac
 # round to integer values !!
 # in order to have discrete values for the individual process
 inf_dyn = round(param_vec[7])
+# depth of other infiltration process
+# accounts / valid for: by-pass flow and perched water table
+pdepth = round(param_vec[8],1)
 
 ####################
 ## validity of some assumptions
@@ -169,12 +172,15 @@ mdepth2_layer = which(zlayers == mdepth2)
 # print(dtheta_infDynProc)
 
 # # depth of pipe routing
-otherdepth = mdepth2 - grid_discretization$z # [m]
+# otherdepth = mdepth2 - grid_discretization$z # [m]
+# depth of underlying process (wfa, by-pass, perched)
+pdepth_layer = which(zlayers == pdepth)
 # determine vertical start
 # other_layer = which(zlayers == otherdepth)
 ## how many layers are between macro and other process?
 # layer_between = other_layer - mdepth_layer - 1
 macro_layer_between = mdepth2_layer - mdepth_layer
+layer_between_processes = pdepth_layer -  mdepth2_layer
 # ####################
 # 
 tsx = dplyr::mutate(Irrigation_grid,
@@ -206,17 +212,17 @@ layer_params = data.frame(Depth = zlayers,
 ## perched water table
 if(inf_dyn == 2){
 layer_params = data.frame(Depth = zlayers,
-                         infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("other",(length(zlayers) - mdepth2_layer))),
-                         nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), seq(1,length.out=(length(zlayers) - mdepth2_layer))),
-                         dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_other,(length(zlayers) - mdepth2_layer)))
+                         infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("other", layer_between_processes), rep("none",(length(zlayers) - pdepth_layer))),
+                         nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), rev(seq(1,length.out=layer_between_processes)), rep(10001, (length(zlayers) - pdepth_layer))),
+                         dtheta = c(rep(dtheta_macro,mdepth_layer), rep(dtheta_macro2,macro_layer_between), rep(dtheta_other, layer_between_processes), rep(0,(length(zlayers) - pdepth_layer)))
               )
 }
 ## by-pass flow
 if(inf_dyn == 3){
 layer_params = data.frame(Depth = zlayers,
-                         infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("other",(length(zlayers) - mdepth2_layer))),
-                         nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), seq(1,length.out=(length(zlayers) - mdepth2_layer))),
-                         dtheta = c(rep(dtheta_macro,mdepth_layer),rep(dtheta_macro2,macro_layer_between),rep(dtheta_other,(length(zlayers) - mdepth2_layer)))
+                         infProcess = c(rep("macro", mdepth_layer),rep("macro2", macro_layer_between), rep("none", layer_between_processes), rep("other",(length(zlayers) - pdepth_layer))),
+                         nlayer = c(rep(1,mdepth_layer), rep(1, macro_layer_between), rep(10001, layer_between_processes), seq(1,length.out=(length(zlayers) - pdepth_layer))),
+                         dtheta = c(rep(dtheta_macro,mdepth_layer), rep(dtheta_macro2,macro_layer_between), rep(0, layer_between_processes), rep(dtheta_other,(length(zlayers) - pdepth_layer)))
               )
 }
 ## DISTINGUISH order of nlayers for process "other", DEPTH (!?) for perched water table and by-pass flow !!
@@ -421,37 +427,9 @@ tsx$lat_c4[which(tsx$lat_c4 %in% cells_sat$cell_id)] = NA
 
 ## determine which vertical cell of a column gets filled in the next timestep
 ## depends on saturation state of cell
-
-## check which infiltration dynamic is beeing applied right now
-# and respectively adjust the filling of cells
-## availlable are:
-# these are (and have to be) hard-coded !!
-# Wfa = 1
-# perched water table = 2
-# by-pass flow = 3
-
-## Wfa
-if(inf_dyn == 1){
 layerfilling = dplyr::mutate(tsx, unsaturated = ifelse(sat, 10000, nlayer)) %>%
                group_by(column, infProcess) %>%
                dplyr::summarize(layerfill = min(unsaturated, na.rm=T))
-}
-## perched water table
-## ?? HOW TO DO THAT ??
-if(inf_dyn == 2){
-layerfilling = dplyr::mutate(tsx, unsaturated = ifelse(sat, 10000, nlayer)) %>%
-               group_by(column, infProcess) %>%
-               dplyr::summarize(layerfill = min(unsaturated, na.rm=T))
-}
-## by-pass flow
-# this is identical with Wfa (1)
-# only the INITIAL depth has to change
-# this is set above, at initializing the tsx matrix !!
-if(inf_dyn == 3){
-layerfilling = dplyr::mutate(tsx, unsaturated = ifelse(sat, 10000, nlayer)) %>%
-               group_by(column, infProcess) %>%
-               dplyr::summarize(layerfill = min(unsaturated, na.rm=T))
-}
 ### update which layers to fill
 tsx = dplyr::select(tsx, - layerfill) %>%
       inner_join(layerfilling)

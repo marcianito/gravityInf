@@ -48,7 +48,6 @@ z = configfile$discr_z
 mb_permitted_error = configfile$mb_permitted_error
 macropore_layer = configfile$use_macro
 macropore_layer2 = configfile$two_macro
-infiltration_dynamics = configfile$inf_dynamics
 n_iterations = configfile$model_runs
 plot_interval = configfile$plot_interval
 plot_transect_2d = configfile$plot_transect_loc
@@ -120,6 +119,12 @@ mdepth = round(param_vec[3],1)
 # lateral flow factor (seperate into lateral and vertical flow)
 latflow_fac = param_vec[4]
 vertflow_fac = 1 - latflow_fac
+# infiltration dynamics
+# round to integer values !!
+inf_dyn = round(param_vec[5])
+# depth of other infiltration process
+# accounts / valid for: by-pass flow and perched water table
+pdepth = round(param_vec[6],1)
 
 ####################
 # if(mdepth2 >= mdepth){
@@ -136,9 +141,12 @@ vertflow_fac = 1 - latflow_fac
 mdepth_layer = which(zlayers == mdepth)
 
 # # depth of pipe routing
-otherdepth = mdepth - grid_discretization$z # [m]
+# otherdepth = mdepth - grid_discretization$z # [m]
+# depth of underlying process (wfa, by-pass, perched)
+pdepth_layer = which(zlayers == pdepth)
 # determine vertical start
 # other_layer = which(zlayers == otherdepth)
+layer_between_processes = pdepth_layer -  mdepth_layer
 # ####################
 # 
 tsx = dplyr::mutate(Irrigation_grid,
@@ -150,11 +158,45 @@ tsx = dplyr::mutate(Irrigation_grid,
       dplyr::mutate(prevalue = 0)
 
 ## tag vertical layers with infiltration process
+
+## check which infiltration dynamic is beeing applied right now
+# and respectively adjust the filling of cells
+## availlable are:
+# these are (and have to be) hard-coded !!
+# Wfa = 1
+# perched water table = 2
+# by-pass flow = 3
+
+## Wfa
+if(inf_dyn == 1){
 layer_params = data.frame(Depth = zlayers,
                          infProcess = c(rep("macro", mdepth_layer), rep("other",(length(zlayers) - mdepth_layer))),
                          nlayer = c(rep(1,mdepth_layer), seq(1,length.out=(length(zlayers) - mdepth_layer))),
                          dtheta = c(rep(dtheta_macro,mdepth_layer), rep(dtheta_other,(length(zlayers) - mdepth_layer)))
               )
+}
+## perched water table
+if(inf_dyn == 2){
+layer_params = data.frame(Depth = zlayers,
+                         infProcess = c(rep("macro", mdepth_layer), rep("other", layer_between_processes), rep("none",(length(zlayers) - pdepth_layer))),
+                         nlayer = c(rep(1,mdepth_layer), rev(seq(1,length.out=layer_between_processes)), rep(10001, (length(zlayers) - pdepth_layer))),
+                         dtheta = c(rep(dtheta_macro,mdepth_layer), rep(dtheta_other, layer_between_processes), rep(0,(length(zlayers) - pdepth_layer)))
+              )
+}
+## by-pass flow
+if(inf_dyn == 3){
+layer_params = data.frame(Depth = zlayers,
+                         infProcess = c(rep("macro", mdepth_layer), rep("none", layer_between_processes), rep("other",(length(zlayers) - pdepth_layer))),
+                         nlayer = c(rep(1,mdepth_layer), rep(10001, layer_between_processes), seq(1,length.out=(length(zlayers) - pdepth_layer))),
+                         dtheta = c(rep(dtheta_macro,mdepth_layer), rep(0, layer_between_processes), rep(dtheta_other,(length(zlayers) - pdepth_layer)))
+              )
+}
+# old version
+# layer_params = data.frame(Depth = zlayers,
+#                          infProcess = c(rep("macro", mdepth_layer), rep("other",(length(zlayers) - mdepth_layer))),
+#                          nlayer = c(rep(1,mdepth_layer), seq(1,length.out=(length(zlayers) - mdepth_layer))),
+#                          dtheta = c(rep(dtheta_macro,mdepth_layer), rep(dtheta_other,(length(zlayers) - mdepth_layer)))
+#               )
 
 ## tag cells with layer parameters
 tsx = inner_join(tsx, layer_params) # %>%

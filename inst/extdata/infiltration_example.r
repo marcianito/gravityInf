@@ -23,8 +23,7 @@
 
 ## initial message
 print("Welcome to gravityInf!")
-print("This package will now run an infiltration scenario model,
-      in order to find site dominant infiltration dynamics, based on your input.")
+print("This package will now run an infiltration scenario model, in order to find site dominant infiltration dynamics, based on your input.")
 
 ## developing
 # library(HyGra)
@@ -80,6 +79,8 @@ message("Initializing setup..checking input data..")
 # Directory
 # path should be absolute
 # (if not, it will be relative to the packages library path)
+# use "test-data" for dir_input to use supplied example files within the package
+# dir_input = "test-data"
 dir_input = "~/temp/GI/"
 dir_output = "~/temp/GI/"
 # Output file type
@@ -94,7 +95,7 @@ plot_data = TRUE
 SG_x = 0
 SG_y = 0
 SG_Z = 0
-SG_SensorHeight = 1.5 
+SG_SensorHeight = 1.05 
 # UTM coordinate system
 # SG_x = 4564082.00
 # SG_y = 5445669.70
@@ -177,7 +178,7 @@ gravityObservations_file = "iGrav006_obs_60sec.tsf"
 # use inverse or conversion mode
 # if set to FALSE, a single conversion run of the infiltration model is exectuted
 # in this case, infiltration parameters supplied in 'starting values' are used as model input
-inverse = TRUE
+inverse = FALSE
 # number of iterations of the algorithm
 model_runs = 10
 
@@ -190,8 +191,15 @@ use_macro = TRUE
 two_macro = TRUE
 # further infiltration dynamics
 # possible options are: wetting front advancement (wfa), by-pass flow and perched water table
-# please include or exclude the desired processes
-inf_dynamics = "wfa_bypass_perched"
+# in the optimization, input is treated and dealt with in terms of real numbers
+# consequentially, discrete values as infiltration process descriptions have to be translated accordingly
+# including or exlucing a process is therefore realized via adjusting the boundary values of the following vector
+# Wfa = 1
+# perched water table = 2
+# by-pass flow = 3
+# the example setting therefore includes both Wfa and perched water table scenarios
+inf_dynamics_min = 1
+inf_dynamics_max = 3
 
 ## modeling time (duration of sprinkling experiment)
 # [min]
@@ -206,12 +214,15 @@ mb_permitted_error = 0.05
 
 ## Defines soil parameter boundaries
 # min and max values, defining the search boundaries for the optimization algorithm
-# Saturation deficit (theta)
+# Saturation deficit (dtheta)
 # macropore layer
 dtheta_macro_min = 0.05 #[VWC]
 dtheta_macro_max = 0.20 #[VWC]
 dtheta_macro2_min = 0.02 #[VWC]
 dtheta_macro2_max = 0.10 #[VWC]
+# Depth of processes
+# in the case of no macro pore flow layers, the parameter 'mdepth' will be used for
+# the depth of the single infiltration processes
 mdepth_min = -0.5 #[m]
 mdepth_max = -0.1 #[m]
 mdepth2_min = -1.5 #[m]
@@ -227,6 +238,8 @@ dtheta_other_max = 0.25 #[VWC]
 # break up criteria when pipedepth < mdepth is implemented in objective function (inf_model_3d)
 # pipedepth_min = 0.2 #[m]
 # pipedepth_max = 4.5 #[m]
+pdepth_min = -2
+pdepth_max = -1.0
 
 # min max values for dividing water into horizontal / lateral parts (factor)
 # in [%]
@@ -241,6 +254,10 @@ mdepth2_start = -1.0
 dtheta_other_start = 0.05
 # pipedepth_start = 0.4
 latflow_fac_start = 0.4
+# infiltration process
+inf_dynamics_start = 2
+# other process starting depth
+pdepth_start = -1.5
 
 ## plotting options
 plot_interval = precip_time / 10
@@ -257,8 +274,12 @@ message("done.")
 message("Starting with calculation routine..")
 
 # set working directory
-dir_wd = system.file("data", package="gravityInf")
-setwd(dir_wd)
+if(dir_input == "test-data"){
+  dir_wd = system.file("data", package="gravityInf")
+  setwd(dir_wd)
+}else{
+  setwd(dir_input)
+}
 
 #########################################
 ## Gravimeter location
@@ -395,7 +416,6 @@ configfile = data.frame(dir_input,
                         mb_permitted_error,
                         use_macro,
                         two_macro,
-                        inf_dynamics,
                         model_runs,
                         plot_interval,
                         plot_transect_loc,
@@ -414,6 +434,8 @@ if(!inverse){
               mdepth2 = mdepth2_start,
               dtheta_other = dtheta_other_start,
               latflow_fac = latflow_fac_start,
+              inf_dynamics = inf_dynamics_start,
+              pdepth = pdepth_start,
               output_dir = dir_output
   )
 
@@ -438,12 +460,18 @@ if(!inverse){
               mdepth2_max = mdepth2_max,
               latflow_fac_min = latflow_fac_min,
               latflow_fac_max = latflow_fac_max,
+              inf_dynamics_min = inf_dynamics_min,
+              inf_dynamics_max = inf_dynamics_max,
+              pdepth_min = pdepth_min,
+              pdepth_max = pdepth_max,
               dtheta_macro_start = dtheta_macro_start,
               dtheta_macro2_start = dtheta_macro2_start,
               mdepth_start = mdepth_start,
               mdepth2_start = mdepth2_start,
               dtheta_other_start = dtheta_other_start,
               latflow_fac_start = latflow_fac_start,
+              inf_dynamics_start = inf_dynamics_start,
+              pdepth_start = pdepth_start,
               input_dir = dir_input,
               output_dir = dir_output,
               inner_inum = 1
@@ -455,7 +483,7 @@ if(!inverse){
 
 # save model data (parameters in- and output)
 save(model_result, file=paste0(dir_output, "Model_stats.rdata"))
-write.table(model_result, file=paste0(dir_output, "Model_stats.csv"), sep="\t", dec=".", row.names = F, col.names = T, append = T)
+write.table(model_result, file=paste0(dir_output, "Model_stats.csv"), sep="\t", dec=".", row.names = F, col.names = T, append = F)
 
 print("done.")
 #########################################
