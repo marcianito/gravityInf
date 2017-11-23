@@ -29,7 +29,7 @@ create_WaterIntensityGrid = function(
     # input_file = "waterIntensity_measured.rData"
     # intp_method = "IDW"
     # surface = gravity_component_grid3d
-    # zerosBorder = .5
+    # zerosBorder = Zeros_border_density
     # spat_col = spatial_col
     # dat_col = data_col
     # UTM_gridcenter_x = SG_x
@@ -54,6 +54,9 @@ create_WaterIntensityGrid = function(
     grid_surface = surface %>%
                 dplyr::filter(Depth == max(surface$Depth)) %>%
                 dplyr::select(x,y)
+    # this has to be done to avoid an error concerning
+    # attribute "tbl_df"
+    grid_surface = as.data.frame(grid_surface)
     
     # number of "zeros" per border-side
     numPoints_side = min(c(length(unique(grid_surface$x)), length(unique(grid_surface$y))))
@@ -111,18 +114,16 @@ create_WaterIntensityGrid = function(
            },
            linear = {
 data_interpolated = approx(intensities_Zeros$x, intensities_Zeros$y, grid_surface, method="linear")
-install.packages("akima")
-library(akima)
 data_interpolated = akima::interp(intensities_Zeros, z = intensities_Zeros$value, surface_grid, linear = T)
 dups = duplicated(intensities_Zeros[,1:2])
 intensities_Zeros = intensities_Zeros[!dups,]
 data_interpolated = akima::interp(x = intensities_Zeros$x, y = intensities_Zeros$y, z = intensities_Zeros$value, xo = grid_surface$x, yo = grid_surface$y, linear = T)
 dataplot = data.frame(x = data_interpolated[[1]], y = data_interpolated[[2]], value = data_interpolated[[3]])
-tt = data_interpolated[[1]]
-tt = data_interpolated[[2]]
-tt = data_interpolated[[3]]
-            # plot
-            ggplot(as.data.frame(data_interpolated), aes(x=x,y=y, color=value)) + geom_point()
+# tt = data_interpolated[[1]]
+# tt = data_interpolated[[2]]
+# tt = data_interpolated[[3]]
+#             # plot
+#             ggplot(as.data.frame(data_interpolated), aes(x=x,y=y, color=value)) + geom_point()
 
            },
            # kriging
@@ -135,12 +136,12 @@ tt = data_interpolated[[3]]
             # variogram
             vario = autofitVariogram(value ~ 1, intensities_Zeros,
                       model = c("Sph", "Exp", "Gau", "Ste", "Mat"),
-            	      verbose=T)
+                      verbose=T)
             # interpolate data to new grid
             data_pred = krige(value ~ 1, intensities_Zeros, grid_surface_krige, vario$var_model)
             # construct data.frame
             data_interpolated = data.frame(x = coordinates(data_pred)[,1], y = coordinates(data_pred)[,2], value = data_pred$var1.pred)
-
+            
             ## calculate intensities per min out of total_weight_dif
             # Becher_radius = 0.035 #[m]
             num_cell = length(grid_surface$x)
