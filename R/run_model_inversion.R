@@ -42,6 +42,7 @@ run_model_inversion = function(
             output_dir, 
             input_dir,
             inner_inum,
+            del_prev,
             ...
 ){
   ## create necessary output directories
@@ -49,6 +50,12 @@ run_model_inversion = function(
       dir.create(file.path(output_dir, "model_output"))
       dir.create(file.path(output_dir, "model_output", "plots"))
       dir.create(file.path(output_dir, "model_output", "raw"))
+  }
+  ## delete results of previous inversion runs (and its log-files)
+  # if not, ppso would try to extent these runs
+  if(del_prev & file.exists(paste0(output_dir, "dds.pro"))){
+    file.remove(paste0(output_dir, "dds.log"))
+    file.remove(paste0(output_dir, "dds.pro"))
   }
 
   # load config file

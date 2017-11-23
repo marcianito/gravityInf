@@ -56,7 +56,6 @@ library(gstat)
 library(ptinpoly)
 #
 library(plot3D)
-
 library(grid)
 library(gridExtra)
 library(scales)
@@ -67,6 +66,7 @@ library(ppso)
 library(spacetime)
 library(sp)
 library(automap)
+library(akima)
 message("done.")
 ####################
 
@@ -88,7 +88,7 @@ dir_output = "~/temp/GI/"
 output_type = ""
 # Plotting option: should a plot of all time series be shown (and saved) in the end?
 plot_data = TRUE
-
+#
 ## Gravimeter location
 # in [m]
 # relativ, local coordinate sytem
@@ -101,7 +101,7 @@ SG_SensorHeight = 1.05
 # SG_y = 5445669.70
 # SG_Z = 609.755
 # SG_SensorHeight = 1.5 
-
+#
 ## Model domain
 # in [m]
 # local grid or UTM, depending on the coordinates of the SG !
@@ -112,12 +112,15 @@ sprinklingArea_y = c(-7.5, 7.5) # min, max
 # sprinklingArea_x = c(SG_x - 7.5, SG_x + 7.5) # min, max
 # sprinklingArea_y = c(SG_y - 7.5, SG_y + 7.5) # min, max
 # grid3d_depth = c(SG_Z, SG_Z - 3) # min, max
-
+#
 ## Model discretization
 # in [m]
-grid3d_discr = data.frame(x = .5, y = .5, z = .1)
+# grid3d_discr = data.frame(x = .5, y = .5, z = .1) # 10 runs; 1.68 mins
+# grid3d_discr = data.frame(x = .25, y = .25, z = .1) # 10 runs; 5.30 mins
+grid3d_discr = data.frame(x = .1, y = .1, z = .1) # 10 runs;  mins
+# in REAL modeling so far: allDir = 0.1; depth up to 5 (?10) m;
 grid3d_depth = c(-3, 0) # min, max
-
+#
 ## Boundaries of SG pillar
 # please use same units as in DEM and model domain
 # if pillar has the structure of a rectangular pillar
@@ -134,7 +137,7 @@ Building_SGpillar_z = c(SG_Z - 1.2, SG_Z) # min, max
 # in [m]
 thres_radius = 0.5
 thres_depth = -1.2
-
+#
 ## Input files
 ## general settings
 # in case using .csv data, the special information has to supplied, in which columns the spatial information is stored
@@ -152,14 +155,14 @@ data_tsf = 7
 # using sep = "??"
 # using dec = "??"
 # for further usage see ?read.csv
-
+#
 ## DEM input file
 # file name including its path
 # should be absolute
 # if left empty, a flat topographie will be assumed
 DEM_input_file = ""
 # DEM_input_file = "WE_UP_TO_300m_05m.asc"
-
+#
 ## Water intensity distribution file
 # IntensityDistribution_file = "waterIntensity_measured.csv"
 IntensityDistribution_file = "waterIntensity_measured.rData"
@@ -169,7 +172,7 @@ interpolation_method = "IDW"
 # set percentage of how many zeros should be added at border / side of grid
 # if not desired, set to 0
 Zeros_border_density = .2
-
+#
 ## Observed gravity data time series
 # this is optional and can be left empty if no automatized reduction is desired
 gravityObservations_file = "iGrav006_obs_60sec.tsf"
@@ -178,17 +181,22 @@ gravityObservations_file = "iGrav006_obs_60sec.tsf"
 # use inverse or conversion mode
 # if set to FALSE, a single conversion run of the infiltration model is exectuted
 # in this case, infiltration parameters supplied in 'starting values' are used as model input
-inverse = FALSE
+inverse = TRUE
 # number of iterations of the algorithm
-model_runs = 10
-
+model_runs = 10 
+# delete results and log-file of previous inverse model runs?
+# recommended to turn this on, experienced problems with the algoritum to 
+# deal with previous input
+# but it should be possible to even continue and extend previous runs
+delete_prevRuns = TRUE
+#
 ## set infiltration model parameters
-
+#
 # set scenarios to include in optimization routine
 # use macro pore flow on top?
 use_macro = TRUE
 # 2 macro pore layers area only used if two_macro is set TRUE
-two_macro = TRUE
+two_macro = F
 # further infiltration dynamics
 # possible options are: wetting front advancement (wfa), by-pass flow and perched water table
 # in the optimization, input is treated and dealt with in terms of real numbers
@@ -200,7 +208,7 @@ two_macro = TRUE
 # the example setting therefore includes both Wfa and perched water table scenarios
 inf_dynamics_min = 1
 inf_dynamics_max = 3
-
+#
 ## modeling time (duration of sprinkling experiment)
 # [min]
 # precip_time = 360 
@@ -208,10 +216,10 @@ precip_time = 10
 ## water input per timestep
 # in [m³/min]
 water_vol_min = 0.035
-
+#
 # set permitted error for mass balance
 mb_permitted_error = 0.05
-
+#
 ## Defines soil parameter boundaries
 # min and max values, defining the search boundaries for the optimization algorithm
 # Saturation deficit (dtheta)
@@ -240,12 +248,12 @@ dtheta_other_max = 0.25 #[VWC]
 # pipedepth_max = 4.5 #[m]
 pdepth_min = -2
 pdepth_max = -1.0
-
+#
 # min max values for dividing water into horizontal / lateral parts (factor)
 # in [%]
 latflow_fac_min = 0.0 #[1]
 latflow_fac_max = 1.0 #[1]
-
+#
 # Starting values of above set infiltration model parameters
 dtheta_macro_start = 0.1
 dtheta_macro2_start = 0.05
@@ -258,11 +266,11 @@ latflow_fac_start = 0.4
 inf_dynamics_start = 2
 # other process starting depth
 pdepth_start = -1.5
-
+#
 ## plotting options
 plot_interval = precip_time / 10
 plot_transect_loc = SG_y 
-
+#
 message("done.")
 ## end SETUP
 #########################################
@@ -272,7 +280,7 @@ message("done.")
 ####################
 ## nothing has to be changed from here on !!
 message("Starting with calculation routine..")
-
+#
 # set working directory
 if(dir_input == "test-data"){
   dir_wd = system.file("data", package="gravityInf")
@@ -280,18 +288,18 @@ if(dir_input == "test-data"){
 }else{
   setwd(dir_input)
 }
-
+#
 #########################################
 ## Gravimeter location
 #########################################
 SG_z = SG_Z + SG_SensorHeight
 SGloc = data.frame(x=SG_x, y=SG_y, z=SG_z)
-
+#
 #########################################
 ## Generate cropped DEM and surface grid
 #########################################
 message("Generate cropped DEM and surface grid..")
-
+#
 surface_grid = surface_grid(
             DEM = DEM_input_file,
             grid_domain_x = sprinklingArea_x,
@@ -301,7 +309,7 @@ surface_grid = surface_grid(
             output_dir = dir_output
             # , sep = "a", etc.
 )
-
+#
 if(!is.null(surface_grid)){
   if(plot_data){
     ggplot(surface_grid, 
@@ -309,13 +317,13 @@ if(!is.null(surface_grid)){
            geom_tile(aes(fill = z))
   }
 }
-
+#
 message("done.")
 #########################################
 # Generate 3d gravity component grid 
 #########################################
 message("Generate 3d gravity component grid..")
-
+#
 gravity_component_grid3d = gravity_comp_grid(
             surface = surface_grid,
             SG_coordinates = SGloc,
@@ -324,20 +332,20 @@ gravity_component_grid3d = gravity_comp_grid(
             range_coords_x = sprinklingArea_x,
             range_coords_y = sprinklingArea_y
 )
-
+#
 if(plot_data){
   ggplot(gravity_component_grid3d, 
          aes(x=x, y=y)) + 
          geom_tile(aes(fill = z))
          # geom_point(aes(color = z))
 }
-
+#
 message("done.")
 #########################################
 ## Correct gravity component grid for SG pillar 
 #########################################
 message("Removing SG pillar from gravity component grid..")
-
+#
 gravity_component_grid3d = correct_SGpillar(
             gravity_comp3d = gravity_component_grid3d,
             # Pillar_x = NA,
@@ -349,10 +357,10 @@ gravity_component_grid3d = correct_SGpillar(
             SG_Y = SG_y #,
             # grid_discretization = NA
 )
-
+#
 # save grid
 save(gravity_component_grid3d, file = paste0(dir_output, "gravity_component_grid3d.rData"))
-
+#
 if(plot_data){
   message("Plotting transect of gravity component grid and saving plot to output directory..")
   plot_gcomp_grid(
@@ -362,13 +370,13 @@ if(plot_data){
                   grid_discretization = grid3d_discr
 )
 }
-
+#
 message("done.")
 #########################################
 ## Create water intensity distribution grid
 #########################################
 message("Creating grid for water intensity distribution..")
-
+#
 Intensity_distribution_interpolated = create_WaterIntensityGrid(
             input_file = IntensityDistribution_file,
             intp_method = interpolation_method,
@@ -381,22 +389,22 @@ Intensity_distribution_interpolated = create_WaterIntensityGrid(
             input_dir = dir_input, 
             output_dir = dir_output
 )
-
+#
 if(plot_data){
   ggplot(Intensity_distribution_interpolated, 
          aes(x=x, y=y)) + 
          geom_tile(aes(fill = intensity))
          # geom_point(aes(color = intensity))
 }
-
+#
 # save grid
 save(Intensity_distribution_interpolated, file = paste0(dir_output, "Intensity_distribution_interpolated.rData"))
-
+#
 message("done.")
 #########################################
 ## Run infiltration model
 #########################################
-
+#
 # combine data for config file
 configfile = data.frame(dir_input,
                         dir_output,
@@ -421,9 +429,10 @@ configfile = data.frame(dir_input,
                         plot_transect_loc,
                         stringsAsFactors=FALSE)
 save(configfile, file=paste0(dir_output, "configfile.rdata"))
-
+#
 ## run model in conversion or inversion mode
 print("Running infiltration model..")
+#
 
 if(!inverse){
   print("Model is run in conversion mode.")
@@ -437,16 +446,17 @@ if(!inverse){
               inf_dynamics = inf_dynamics_start,
               pdepth = pdepth_start,
               output_dir = dir_output
-  )
-
+              )
+#
 }else{
 ## Run optimization algorithm
   print("Model is run in inversion mode.")
   print("Run optimization algorithm..")
   print("..this will take some time..")
-  
+ # 
   ## run model within optimization algorithm
   # for changing optimization function additional parameters, please see ?optim_dds
+st = Sys.time()
   model_result = run_model_inversion(
               dtheta_macro_min = dtheta_macro_min,
               dtheta_macro_max = dtheta_macro_max,
@@ -474,13 +484,18 @@ if(!inverse){
               pdepth_start = pdepth_start,
               input_dir = dir_input,
               output_dir = dir_output,
-              inner_inum = 1
+              inner_inum = 1,
+              del_prev = delete_prevRuns
   )
+#
+en = Sys.time()
+time_elapsed = en - st
 
   print("Finished optimization.")
+  print(time_elapsed)
 # end of inversion / conversion mode infiltration model runs
 }
-
+#
 # save model data (parameters in- and output)
 save(model_result, file=paste0(dir_output, "Model_stats.rdata"))
 write.table(model_result, file=paste0(dir_output, "Model_stats.csv"), sep="\t", dec=".", row.names = F, col.names = T, append = F)
@@ -492,7 +507,7 @@ print("done.")
 
 if(plot_data){
   message("Plotting modeled and observed gravity signal..")
-
+#
 if(!inverse){
   plot_gravity_responses(
               gravity_obs = gravityObservations_file,
