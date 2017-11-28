@@ -126,11 +126,9 @@ inf_dyn = round(param_vec[4])
 pdepth = round(param_vec[5],1)
 
 ####################
-# if(mdepth2 >= mdepth){
-#   kge_fit = 1
-#   return(kge_fit) 
-# # if everything is okay, run normally
-# }else{ 
+## validity of some assumptions
+
+## nothing here
 
 ##########################################
 ## build up model domain space
@@ -590,7 +588,7 @@ kge_fit = 1 - kge_value
 rm(Infiltration_model_results, infiltration_gmod)
 gc()
 ## move to next n_param value for plot indexing
-print(n_param)
+print(paste0("Finished parameterset: ",n_param))
 n_param <<- n_param + 1
 
 ## returning quality criteria:

@@ -17,7 +17,7 @@ inf_model_3d_2macro = function(param_vec){
 
 # ####################
 # ## debugging
-# param_vec = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start)
+# param_vec = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start, inf_dynamics_start, pdepth_start)
 # ####################
 
 # ##########
@@ -137,13 +137,6 @@ pdepth = round(param_vec[8],1)
 
 ####################
 ## validity of some assumptions
-#
-## check validity of chosen thicknesses / depth of both infiltration processes
-# if(pipedepth <= mdepth){
-#   kge_fit = 1
-#   return(kge_fit) 
-# # if everything is okay, run normally
-# }else{ 
 
 if(mdepth2 >= mdepth | pdepth >= mdepth2){
   print(paste0("Problem with vertical layer distribution in paramterset: ",n_param))
@@ -152,13 +145,6 @@ if(mdepth2 >= mdepth | pdepth >= mdepth2){
   return(kge_fit) 
 # if everything is okay, run normally
 }else{ 
-
-# ## check if [rounded] infiltration dynamics is in acordance with its set limitations (concerning processes)
-# if((inf_dyn < inf_dyn_min) | (inf_dyn > inf_dyn_max)){
-#   kge_fit = 1
-#   return(kge_fit) 
-# # if everything is okay, run normally
-# }else{ 
 
 ##########################################
 ## build up model domain space
@@ -297,7 +283,7 @@ mb_error = data.frame(datetime = seq(1:precip_time), error = NA, corrected = NA)
 ####################
 ## start with for loop and TS1
 for(i in 1:precip_time){ 
-# for(i in 3:10){ 
+# for(i in 1:95){ 
   # i=2
 ## pass previous values to new time step data.frame
 tsx$prevalue = tsx$value
@@ -439,8 +425,8 @@ tsx = dplyr::select(tsx, - layerfill) %>%
 ## determine the number of cells in each column, which are to be filled in the next timestep
 ## this value is used to divide the avaivable water per timestep
 ## and thus directly influences errors in mass balance
-cellnums_dynamic = dplyr::mutate(layerfilling, ncells = ifelse(infProcess == "macro" & layerfill < 2, mdepth * 10 +1, 0)) %>%
-                   dplyr::mutate(ncells = ifelse(infProcess == "macro2" & layerfill < 2, (mdepth2 - mdepth) * 10, ncells)) %>%
+cellnums_dynamic = dplyr::mutate(layerfilling, ncells = ifelse(infProcess == "macro" & layerfill < 2, mdepth_layer, 0)) %>%
+                   dplyr::mutate(ncells = ifelse(infProcess == "macro2" & layerfill < 2, (mdepth2_layer - mdepth_layer), ncells)) %>%
                    dplyr::mutate(ncells = ifelse(infProcess == "other", 1, ncells)) %>%
                    dplyr::group_by(column) %>%
                    dplyr::summarize(cellsLayerColumn = sum(ncells, na.rm=T))
@@ -638,8 +624,6 @@ n_param <<- n_param + 1
 ## KGE
 return(kge_fit) 
 
-# ## else statement, runs if infiltration dynamics are as initially defined
-# }
 ## else statement, runs if otherdepth > mdepth
 }
 

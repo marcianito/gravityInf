@@ -127,11 +127,14 @@ inf_dyn = round(param_vec[5])
 pdepth = round(param_vec[6],1)
 
 ####################
-# if(mdepth2 >= mdepth){
-#   kge_fit = 1
-#   return(kge_fit) 
-# # if everything is okay, run normally
-# }else{ 
+## validity of some assumptions
+if(mdepth2 >= mdepth | pdepth >= mdepth2){
+  print(paste0("Problem with vertical layer distribution in paramterset: ",n_param))
+  n_param <<- n_param + 1
+  kge_fit = 1
+  return(kge_fit) 
+# if everything is okay, run normally
+}else{ 
 
 ##########################################
 ## build up model domain space
@@ -398,7 +401,7 @@ tsx = dplyr::select(tsx, - layerfill) %>%
 ## determine the number of cells in each column, which are to be filled in the next timestep
 ## this value is used to divide the avaivable water per timestep
 ## and thus directly influences errors in mass balance
-cellnums_dynamic = dplyr::mutate(layerfilling, ncells = ifelse(infProcess == "macro" & layerfill < 2, mdepth * 10 +1, 0)) %>%
+cellnums_dynamic = dplyr::mutate(layerfilling, ncells = ifelse(infProcess == "macro" & layerfill < 2, mdepth_layer, 0)) %>%
                    dplyr::mutate(ncells = ifelse(infProcess == "other", 1, ncells)) %>%
                    dplyr::group_by(column) %>%
                    dplyr::summarize(cellsLayerColumn = sum(ncells, na.rm=T))
@@ -589,7 +592,7 @@ kge_fit = 1 - kge_value
 rm(Infiltration_model_results, infiltration_gmod)
 gc()
 ## move to next n_param value for plot indexing
-print(n_param)
+print(paste0("Finished parameterset: ",n_param))
 n_param <<- n_param + 1
 
 ## returning quality criteria:
@@ -597,7 +600,7 @@ n_param <<- n_param + 1
 return(kge_fit) 
 
 ## else statement, runs if otherdepth > mdepth
-# }
+}
 
 print("Finished model run.")
 ####################

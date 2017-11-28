@@ -31,6 +31,9 @@ plot_transect_2d = function(
     ## load modeled gravity response
     #     sm_mod_data = load(file = paste0(output_dir, soilmoisture_mod))
     #     sm_mod_data = get(sm_mod_data)
+    
+    # get limiting values first, in order for all plots to have equal limits
+    data_qt = round(stats::quantile(sm_mod_data$value, na.rm = T, names = F), 2)
 
     # limit data to one time step
     data_plot = dplyr::filter(sm_mod_data, datetime == tstep)
@@ -47,7 +50,7 @@ plot_transect_2d = function(
     # data_min = min(data_plot$value, na.rm = T)
     # data_max = max(data_plot$value, na.rm = T)
     # data_mean = mean(data_plot$value, na.rm = T)
-    data_qt = round(stats::quantile(data_plot$value, na.rm = T, names = F), 2)
+    # data_qt = round(stats::quantile(data_plot$value, na.rm = T, names = F), 2)
     
     transect_2d.gg = ggplot(data_plot, aes(x=x, y=Depth)) +
         geom_tile(aes(fill = value)) + #, width = .25) + 
