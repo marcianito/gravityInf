@@ -145,7 +145,9 @@ pdepth = round(param_vec[8],1)
 # # if everything is okay, run normally
 # }else{ 
 
-if(mdepth2 >= mdepth){
+if(mdepth2 >= mdepth | pdepth >= mdepth2){
+  print(paste0("Problem with vertical layer distribution in paramterset: ",n_param))
+  n_param <<- n_param + 1
   kge_fit = 1
   return(kge_fit) 
 # if everything is okay, run normally
@@ -537,7 +539,7 @@ dev.off()
 
 # plot one transect for many (chosen) time steps
 # define time steps to plot
-plot_ts = seq(Infiltration_model_results$datetime[1], Infiltration_model_results$datetime[precip_time], by = plot_interval)
+plot_ts = seq(min(unique(Infiltration_model_results$datetime)), max(unique(Infiltration_model_results$datetime)), by = plot_interval)
 for(ts_i in plot_ts){
 png(file=paste0(dir_plots, "Transect_soilmoisture_TS_", plot_interval, "_", n_param, ".png"), width=1000, height=1000, res=250)
 plot(plot_transect_2d(
@@ -629,7 +631,7 @@ kge_fit = 1 - kge_value
 rm(Infiltration_model_results, infiltration_gmod)
 gc()
 ## move to next n_param value for plot indexing
-print(n_param)
+print(paste0("Finished parameterset: ",n_param))
 n_param <<- n_param + 1
 
 ## returning quality criteria:
