@@ -49,7 +49,7 @@ run_model_conversion = function(
   # store actual working directory
   wd_now = getwd()
   # set working directory
-  setwd(dir_output)
+  setwd(output_dir)
 
   # prepare model input data and parameter boundaries
   if(macropores){

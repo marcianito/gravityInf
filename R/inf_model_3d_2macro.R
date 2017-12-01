@@ -57,7 +57,7 @@ grid_discretization = data.frame(x, y, z)
 # construct spatial input data columns
 spat_col = c(spat_col_x, spat_col_y, spat_col_z)
 # set plot directory
-dir_plots = paste0(dir_output,"model_output/plots/")
+dir_plots = paste0(output_dir,"model_output/plots/")
 
 # volume of grid cell 
 vol_cell = grid_discretization$x * grid_discretization$y * grid_discretization$z # [m³]
@@ -538,7 +538,7 @@ dev.off()
 
 print(paste0("Saving Infiltration data for n_param: ", n_param))
 ## save data
-save(Infiltration_model_results, file=paste0(dir_output, "model_output/Infiltration_model_output_", n_param, ".rData"))
+save(Infiltration_model_results, file=paste0(output_dir, "model_output/Infiltration_model_output_", n_param, ".rData"))
 
 # 
 ##debug
@@ -587,7 +587,7 @@ gcomp_grid$z = round(gcomp_grid$z, round_z)
 print("Calculating gravity response..")
 infiltration_gmod = calculate_gravity_response(gcomp_grid, Infiltration_model_results)
 #save gsignal
-save(infiltration_gmod, file=paste0(dir_output, "model_output/GravityResponse_Infiltration_model_", n_param, ".rData"))
+save(infiltration_gmod, file=paste0(output_dir, "model_output/GravityResponse_Infiltration_model_", n_param, ".rData"))
 # print(str(infiltration_gmod))
 # change column name for plotting
 colnames(infiltration_gmod)[2] = "gmod"

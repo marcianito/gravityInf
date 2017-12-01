@@ -99,7 +99,7 @@ run_model_inversion = function(
   # store actual working directory
   wd_now = getwd()
   # set working directory
-  setwd(dir_output)
+  setwd(output_dir)
 
   # get number of desired model runs
   n_iterations = configfile$model_runs
