@@ -50,7 +50,7 @@ macropore_layer = configfile$use_macro
 macropore_layer2 = configfile$two_macro
 n_iterations = configfile$model_runs
 plot_interval = configfile$plot_interval
-plot_transect_2d = configfile$plot_transect_loc
+plot_transect_loc = configfile$plot_transect_loc
 
 # construct grid discretization
 grid_discretization = data.frame(x, y, z)
