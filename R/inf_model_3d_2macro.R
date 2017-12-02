@@ -137,6 +137,13 @@ pdepth = round(param_vec[8],1)
 
 ####################
 ## validity of some assumptions
+# print(mdepth)
+# print(mdepth2)
+# print(param_vec[8])
+# print(str(param_vec))
+# print(pdepth)
+# print(mdepth2 >= mdepth)
+# print(pdepth >= mdepth2)
 
 if(mdepth2 >= mdepth | pdepth >= mdepth2){
   print(paste0("Problem with vertical layer distribution in paramterset: ",n_param))
@@ -188,6 +195,12 @@ tsx = dplyr::mutate(Irrigation_grid,
 # Wfa = 1
 # perched water table = 2
 # by-pass flow = 3
+
+print("before data frame")
+print(mdepth_layer)
+print(macro_layer_between)
+print(zlayers)
+print(mdepth2_layer)
 
 ## Wfa
 if(inf_dyn == 1){
@@ -609,7 +622,8 @@ dev.off()
 ## regular KGE
 # kge_value = KGE(infiltration_gmod$gmod, igrav_timesteps$gmod)
 ## changing scaling factor of component BIAS
-kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
+kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)], s=c(2.5/6,2.5/6,1/6))
+# kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
 kge_fit = 1 - kge_value
 
 ####################
