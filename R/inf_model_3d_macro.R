@@ -128,7 +128,7 @@ pdepth = round(param_vec[6],1)
 
 ####################
 ## validity of some assumptions
-if(mdepth2 >= mdepth | pdepth >= mdepth2){
+if(pdepth >= mdepth){
   print(paste0("Problem with vertical layer distribution in paramterset: ",n_param))
   n_param <<- n_param + 1
   kge_fit = 1
