@@ -56,6 +56,7 @@ run_model_conversion = function(
     if(macro2){
       # combine input parameters
       parameter_input = c(dtheta_macro, dtheta_macro2, dtheta_other, mdepth, mdepth2, latflow_fac, inf_dynamics, pdepth)
+      model_info_colnames = c("dtheta_macro", "dtheta_macro2", "dtheta_other", "mdepth", "mdepth2", "latflow_fac", "inf_dynamics", "pdepth")
       # run model 
       model_result = inf_model_3d_2macro(
                         param_vec = parameter_input
@@ -63,6 +64,7 @@ run_model_conversion = function(
     }else{
       # combine input parameters
       parameter_input = c(dtheta_macro, dtheta_other, mdepth, latflow_fac, inf_dynamics, pdepth)
+      model_info_colnames = c("dtheta_macro", "dtheta_other", "mdepth", "latflow_fac", "inf_dynamics", "pdepth")
       # run model 
       model_result = inf_model_3d_macro(
                         param_vec = parameter_input
@@ -71,6 +73,7 @@ run_model_conversion = function(
   }else{
     # combine input parameters
     parameter_input = c(dtheta_other, mdepth, latflow_fac, inf_dynamics, pdepth)
+    model_info_colnames = c("dtheta_other", "mdepth", "latflow_fac", "inf_dynamics", "pdepth")
       # run model 
       model_result = inf_model_3d_single(
                         param_vec = parameter_input
@@ -111,7 +114,10 @@ run_model_conversion = function(
   info_columns_num = length(model_info)
   for(param_num in 1:length(parameter_input)){
     model_info[,(param_num + info_columns_num)] = parameter_input[param_num]
+    colnames(model_info)[(param_num + info_columns_num)] = model_info_colnames[param_num]
   }
+  # set column names
+  # colnames(model_info)[(info_columns_num + 1):(info_columns_num + length(model_info_colnames))] = model_info_colnames
   
   # return model statistics and parameters
   return(model_info)

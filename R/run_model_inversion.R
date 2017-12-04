@@ -71,6 +71,8 @@ run_model_inversion = function(
                             maximum = c(dtheta_macro_max, dtheta_macro2_max, dtheta_other_max, mdepth_max, mdepth2_max, latflow_fac_max, inf_dynamics_max, pdepth_max))
       # combine start parameter values
       param_startvalue = c(dtheta_macro_start, dtheta_macro2_start, dtheta_other_start, mdepth_start, mdepth2_start, latflow_fac_start, inf_dynamics_start, pdepth_start)
+      # column names for model output
+      model_info_colnames = c("dtheta_macro", "dtheta_macro2", "dtheta_other", "mdepth", "mdepth2", "latflow_fac", "inf_dynamics", "pdepth")
       # set name of model to use
       model = "inf_model_3d_2macro"
     }else{
@@ -79,6 +81,8 @@ run_model_inversion = function(
                             maximum = c(dtheta_macro_max, dtheta_other_max, mdepth_max, latflow_fac_max, inf_dynamics_max, pdepth_max))
       # combine start parameter values
       param_startvalue = c(dtheta_macro_start, dtheta_other_start, mdepth_start, latflow_fac_start, inf_dynamics_start, pdepth_start)
+      # column names for model output
+      model_info_colnames = c("dtheta_macro", "dtheta_other", "mdepth", "latflow_fac", "inf_dynamics", "pdepth")
       # set name of model to use
       model = "inf_model_3d_macro"
     }
@@ -88,6 +92,8 @@ run_model_inversion = function(
                           maximum = c(dtheta_other_max, mdepth_max, latflow_fac_max, inf_dynamics_max, pdepth_max))
     # combine start parameter values
     param_startvalue = c(dtheta_other_start, mdepth_start, latflow_fac_start, inf_dynamics_start, pdepth_start)
+    # column names for model output
+    model_info_colnames = c("dtheta_other", "mdepth", "latflow_fac", "inf_dynamics", "pdepth")
     # set name of model to use
     model = "inf_model_3d_single"
   }
@@ -161,6 +167,7 @@ run_model_inversion = function(
   info_columns_num = length(model_info)
   for(param_num in 1:length(param_bounds[,1])){
     model_info[,(param_num + info_columns_num)] = opt_result$par[param_num]
+    colnames(model_info)[(param_num + info_columns_num)] = model_info_colnames[param_num]
   }
 
   # return model statistics and parameters
