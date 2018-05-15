@@ -27,6 +27,7 @@ inf_model_3d_2macro = function(param_vec){
 print(paste0("n_param: ", n_param))
 # ##########
 
+time_start = Sys.time()
 ###################
 ## load model configuration
 load(file="configfile.rdata")
@@ -108,6 +109,9 @@ stats = data.frame()
 
 print("Finished loading setup parameters.")
 
+time_end = Sys.time()
+ctime_dataSetup = time_end - time_start
+time_start = Sys.time()
 ##########################################
 ## pass parameters from DDS-function param_vec space
 ##########################################
@@ -130,7 +134,16 @@ vertflow_fac = 1 - latflow_fac
 # infiltration dynamics
 # round to integer values !!
 # in order to have discrete values for the individual process
-inf_dyn = round(param_vec[7])
+if(param_vec > 2.2){
+    inf_dyn = 3
+}else{
+  inf_dyn = 2
+}
+if(param_vec < 1.8){
+  inf_dyn = 1
+}
+# inf_dyn = round(param_vec[7])
+#
 # depth of other infiltration process
 # accounts / valid for: by-pass flow and perched water table
 pdepth = round(param_vec[8],1)
@@ -293,6 +306,10 @@ tsx = left_join(tsx, cellneig_sides) %>%
 ## create mass balance error file
 mb_error = data.frame(datetime = seq(1:precip_time), error = NA, corrected = NA)
 
+time_end = Sys.time()
+ctime_modelSetup = time_end - time_start
+time_start = Sys.time()
+
 ####################
 ## start with for loop and TS1
 for(i in 1:precip_time){ 
@@ -448,6 +465,11 @@ tsx = dplyr::select(tsx, - cellsLayerColumn) %>%
 
 } # end for loop
 
+
+time_end = Sys.time()
+ctime_modelRun = time_end - time_start
+time_start = Sys.time()
+
 ## save mass balance error log
 save(mb_error, file=paste0(output_dir, "model_output/MassBalanceError_", n_param, ".rdata"))
 
@@ -507,6 +529,10 @@ Infiltration_model_results = fread(file=paste0(output_dir, "model_output/raw/raw
                                select = c("x","y","z","Depth","value","datetime"))
 ## convert data.table to data.frame
 setDF(Infiltration_model_results)
+
+time_end = Sys.time()
+ctime_saveAndReadData = time_end - time_start
+time_start = Sys.time()
 
 ####################
 ## check if all water was actually distributed
@@ -579,6 +605,10 @@ save(Infiltration_model_results, file=paste0(output_dir, "model_output/Infiltrat
 # ttt = left_join(gcomp_irrigation_domain, tt)
 # print(str(ttt))
 
+time_end = Sys.time()
+ctime_plotting = time_end - time_start
+time_start = Sys.time()
+
 ########################################
 ## gravity response in nm/s²
 ########################################
@@ -626,6 +656,10 @@ kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod[1:length(infiltra
 # kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
 kge_fit = 1 - kge_value
 
+
+time_end = Sys.time()
+ctime_gravityResponseAndPlotting = time_end - time_start
+
 ####################
 ## clean up memory
 rm(Infiltration_model_results, infiltration_gmod)
@@ -640,6 +674,14 @@ return(kge_fit)
 
 ## else statement, runs if otherdepth > mdepth
 }
+
+## modeling timing ("profiling")
+print("Model parts computational times:")
+print(paste0("Data setup: ", ctime_dataSetup))
+print(paste0("Model setup: ", ctime_modelSetup))
+print(paste0("Model run: ", ctime_modelRun))
+print(paste0("Plotting: ", ctime_plotting))
+print(paste0("Gravity calculations and plotting: ", ctime_gravityResponseAndPlotting))
 
 print("Finished model run.")
 ####################
