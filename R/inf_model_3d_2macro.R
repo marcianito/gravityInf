@@ -134,12 +134,12 @@ vertflow_fac = 1 - latflow_fac
 # infiltration dynamics
 # round to integer values !!
 # in order to have discrete values for the individual process
-if(param_vec > 2.2){
+if(param_vec[7] > 2.2){
     inf_dyn = 3
 }else{
   inf_dyn = 2
 }
-if(param_vec < 1.8){
+if(param_vec[7] < 1.8){
   inf_dyn = 1
 }
 # inf_dyn = round(param_vec[7])
@@ -214,6 +214,8 @@ print(mdepth_layer)
 print(macro_layer_between)
 print(zlayers)
 print(mdepth2_layer)
+print("infiltration dynamics process:")
+print(inf_dyn)
 
 ## Wfa
 if(inf_dyn == 1){
