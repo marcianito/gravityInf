@@ -13,12 +13,62 @@
 #' @references Marvin Reich (2017), mreich@@posteo.de
 #' @examples missing
 
-inf_model_3d_macro = function(param_vec){
+inf_model_3d_macro = function(param_1, param_2, param_3, param_4, param_5, param_6){
+# inf_model_3d_macro = function(param_vec, dummy1=0, dummy2=0, dummy3=0, dummy4=0, dummy5=0){
 
 # ####################
 # ## debugging
 # param_vec = c(dtheta_macro_start, dtheta_other_start, mdepth_start, latflow_fac_start)
 # ####################
+
+
+print("param_2: ")
+print(param_2)
+print("param_6: ")
+print(param_6)
+
+## construct parameter vector
+param_vec = c(param_1, param_2, param_3, param_4, param_5, param_6)
+
+print("param_vec: ")
+print(param_vec)
+message("param_vec: ")
+message(param_vec)
+
+## library: necessary for parallel backend to work
+print("loading libraries WITHIN inf_model")
+message("loading libraries WITHIN inf_model")
+library(devtools)
+# setwd("/home/hydro/mreich/R/")
+load_all("/home/hydro/mreich/R/UmbrellaEffect")
+load_all("/home/hydro/mreich/R/gravityInf")
+
+print("working directory:")
+print(getwd())
+print("setting new working directory (hard coded)")
+setwd("/home/hydro/mreich/Irrigation/inf_models/inf_model_oneM_test3PP/")
+print("NEW working directory:")
+print(getwd())
+
+library(zoo); Sys.setenv(TZ = "GMT")
+library(xts)
+library(dplyr)
+library(raster)
+library(reshape2)
+library(ggplot2)
+library(viridis)
+library(gstat)
+library(ptinpoly)
+library(grid)
+# library(gridExtra)
+library(scales)
+library(hydroGOF)
+library(data.table)
+# library(ppso)
+# for kriging
+# library(spacetime)
+# library(sp)
+# library(automap)
 
 # ##########
 # ## logging to file
@@ -28,8 +78,10 @@ inf_model_3d_macro = function(param_vec){
 # ##########
 
 ###################
+print("loading configfile..")
 ## load model configuration
-load(file="configfile.rdata")
+load(file="./configfile.rdata")
+print("configfile loaded.")
 input_dir = configfile$dir_input
 output_dir = configfile$dir_output
 precip_time = configfile$precip_time
@@ -73,7 +125,7 @@ gravity_obs_data = read_data(gravity_obs, input_dir)
 colnames(gravity_obs_data)[2] = "gmod"
 # reduce time series by first value (in order to start at zero mass change)
 # gravity_obs_data = mutate(gravity_obs_data, gmod = gmod - min(gmod))
-gravity_obs_data = mutate(gravity_obs_data, gmod = gmod - gmod[1])
+gravity_obs_data = dplyr::mutate(gravity_obs_data, gmod = gmod - gmod[1])
 # gravity_timesteps = data.frame(datetime = 1:length(gravity_obs_data$gmod[-1]), gmod = gravity_obs_data$gmod[-1])
 gravity_timesteps = data.frame(datetime = 1:precip_time, gmod = gravity_obs_data$gmod[2:(precip_time+1)])
 
@@ -82,7 +134,25 @@ Irrigation_grid = dplyr::select(gcomp_grid, x, y, z, Depth)
 # vertical layers
 zlayers = round(unique(Irrigation_grid$Depth),1)
 # number of cells per layer
-num_cell = length(unique(Irrigation_grid$x)) *  length(unique(Irrigation_grid$y))
+num_cell = dim(Irrigation_grid)[1] / length(zlayers)
+# num_cell = length(unique(Irrigation_grid$x)) *  length(unique(Irrigation_grid$y))
+
+print("gcomp_grid, Irrigation grid, zlayer and num_cell")
+print(str(gcomp_grid))
+print(str(Irrigation_grid))
+print(str(zlayers))
+print(str(num_cell))
+print("unique irrigation values x,y")
+print(unique(Irrigation_grid$x))
+print(unique(Irrigation_grid$y))
+print("length Irrigation_grid col 1")
+print(length(Irrigation_grid[,1]))
+
+## set unique identifier for process on slave
+n_param = paste0(mpi.get.processor.name(), "_", mpi.comm.rank(), "_", format(Sys.time(), "%Y-%m-%d_%H%M"))
+print("n_param")
+print(n_param)
+
 
 # define factors for scaling between "side" and "corner" cell neighbours
 # following (Quinn 1997), where cardinal (side) and diagnol (corner) factors are summed
@@ -107,6 +177,7 @@ Intensity_distribution = get(Intensity_distribution)
 stats = data.frame()
 
 print("Finished loading setup parameters.")
+message("Finished loading setup parameters.")
 
 ##########################################
 ## pass parameters from DDS-function param_vec space
@@ -151,6 +222,13 @@ pdepth_layer = which(zlayers == pdepth)
 # other_layer = which(zlayers == otherdepth)
 layer_between_processes = pdepth_layer -  mdepth_layer
 # ####################
+## degugging
+print("column: ")
+column = rep(1:num_cell, length(zlayers))
+print(column)
+print("dim Irrigation_grid")
+print(dim(Irrigation_grid))
+
 # 
 tsx = dplyr::mutate(Irrigation_grid,
       # column = rep(gridcells$ncell, length(zlayers))) %>%
@@ -169,6 +247,8 @@ tsx = dplyr::mutate(Irrigation_grid,
 # Wfa = 1
 # perched water table = 2
 # by-pass flow = 3
+
+print("defining grid of infiltration process")
 
 ## Wfa
 if(inf_dyn == 1){
@@ -202,26 +282,26 @@ layer_params = data.frame(Depth = zlayers,
 #               )
 
 ## tag cells with layer parameters
-tsx = inner_join(tsx, layer_params) # %>%
+tsx = dplyr::inner_join(tsx, layer_params) # %>%
       # inner_join(Irrigation_grid)
 
 ## calculate number of "same" cells per layers in a column
-cellnums = group_by(tsx, column, nlayer) %>%
+cellnums = dplyr::group_by(tsx, column, nlayer) %>%
 # cellnums = group_by(tsx, column, nlayer, infProcess) %>%
            dplyr::summarize(cellsLayerColumn = sum(cnt, na.rm=T)) %>%
            ungroup()
 
 ## join with intensity distribution coefficents
-tsx = inner_join(tsx, Intensity_distribution) %>%
-      mutate(distrWater = water_vol_min * intensity / num_cell / vol_cell) %>%
-      mutate(layerfill = 1) %>%
-      inner_join(cellnums) %>%
+tsx = dplyr::inner_join(tsx, Intensity_distribution) %>%
+      dplyr::mutate(distrWater = water_vol_min * intensity / num_cell / vol_cell) %>%
+      dplyr::mutate(layerfill = 1) %>%
+      dplyr::inner_join(cellnums) %>%
       dplyr::select(-intensity) %>%
-      mutate(sat = F) %>%
-      mutate(aboveSat = F) %>%
-      mutate(value_lat = NA) %>%
-      mutate(lat_water = distrWater * latflow_fac) %>%
-      mutate(cell_id = paste0(nlayer,"_",column,"_",infProcess))
+      dplyr::mutate(sat = F) %>%
+      dplyr::mutate(aboveSat = F) %>%
+      dplyr::mutate(value_lat = NA) %>%
+      dplyr::mutate(lat_water = distrWater * latflow_fac) %>%
+      dplyr::mutate(cell_id = paste0(nlayer,"_",column,"_",infProcess))
 
 ## construct database with cell neighbours
 celllayer = dplyr::filter(tsx, Depth == 0) %>%
@@ -244,12 +324,12 @@ cellneig_corners = dcast(cellneig_corners, from ~ columns ,fill = NA, value.var 
 colnames(cellneig_corners)[1] = "column"
 
 ## join adjacent cells with cell-grid
-tsx = left_join(tsx, cellneig_sides) %>%
+tsx = dplyr::left_join(tsx, cellneig_sides) %>%
       dplyr::mutate(lat_s1 = ifelse(!is.na(lat_s1),paste0(nlayer,"_",lat_s1), lat_s1))%>%
       dplyr::mutate(lat_s2 = ifelse(!is.na(lat_s2),paste0(nlayer,"_",lat_s2), lat_s2))%>%
       dplyr::mutate(lat_s3 = ifelse(!is.na(lat_s3),paste0(nlayer,"_",lat_s3), lat_s3))%>%
       dplyr::mutate(lat_s4 = ifelse(!is.na(lat_s4),paste0(nlayer,"_",lat_s4), lat_s4))%>%
-      left_join(cellneig_corners) %>%
+      dplyr::left_join(cellneig_corners) %>%
       dplyr::mutate(lat_c1 = ifelse(!is.na(lat_c1),paste0(nlayer,"_",lat_c1), lat_c1))%>%
       dplyr::mutate(lat_c2 = ifelse(!is.na(lat_c2),paste0(nlayer,"_",lat_c2), lat_c2))%>%
       dplyr::mutate(lat_c3 = ifelse(!is.na(lat_c3),paste0(nlayer,"_",lat_c3), lat_c3))%>%
@@ -260,6 +340,7 @@ mb_error = data.frame(datetime = seq(1:precip_time), error = NA, corrected = NA)
 
 ####################
 ## start with for loop and TS1
+print("starting with model for-loop..")
 for(i in 1:precip_time){ 
 # for(i in 3:10){ 
   # i=2
@@ -298,9 +379,9 @@ lateral_flow_sides = dplyr::filter(tsx, sat == T) %>%
 # lateral_flow_sides = dplyr::filter(tt, sat == T) %>%
                     dplyr::select(cell_id, nlayer, lat_water, lat_s1, lat_s2, lat_s3, lat_s4) %>%
                     melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
-cnt_NOTna_cells = group_by(lateral_flow_sides, cell_id) %>%
+cnt_NOTna_cells = dplyr::group_by(lateral_flow_sides, cell_id) %>%
                   dplyr::summarize(num_latcells = length(na.omit(value)))
-lateral_flow_sides = left_join(lateral_flow_sides, cnt_NOTna_cells) %>%
+lateral_flow_sides = dplyr::left_join(lateral_flow_sides, cnt_NOTna_cells) %>%
                     dplyr::mutate(value_lat = lat_water * sfactor / num_latcells) # %>%
                     # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
                     # dplyr::mutate(org_cell = cell_id)
@@ -310,7 +391,7 @@ lateral_flow_corners = dplyr::filter(tsx, sat == T) %>%
                     melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
 cnt_NOTna_cells = group_by(lateral_flow_corners, cell_id) %>%
                   dplyr::summarize(num_latcells = length(na.omit(value)))
-lateral_flow_corners = left_join(lateral_flow_corners, cnt_NOTna_cells) %>%
+lateral_flow_corners = dplyr::left_join(lateral_flow_corners, cnt_NOTna_cells) %>%
                     dplyr::mutate(value_lat = lat_water * cfactor / num_latcells) # %>%
                     # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
                     # dplyr::mutate(org_cell = cell_id)
@@ -320,12 +401,12 @@ lateral_flow_sc = rbind(lateral_flow_sides, lateral_flow_corners)
                     # sonst muss noch skaliert werden !!!!
 ## nach zusammenführen von corner und sides, noch nur 1 value_lat pro cellid schaffen
 # lateral_flows = group_by(lateral_flow_sc, lat_cell) %>%
-lateral_flows = group_by(lateral_flow_sc, value) %>%
+lateral_flows = dplyr::group_by(lateral_flow_sc, value) %>%
                 dplyr::summarize(value_lat = sum(value_lat, na.rm=T)) %>%
                 dplyr::mutate(lat_cell = value) %>%
                 dplyr::select(lat_cell, value_lat)
 
-tsx = left_join(dplyr::select(tsx, -value_lat), as.data.frame(lateral_flows), by=c("cell_id" = "lat_cell")) %>%
+tsx = dplyr::left_join(dplyr::select(tsx, -value_lat), as.data.frame(lateral_flows), by=c("cell_id" = "lat_cell")) %>%
       dplyr::mutate(value = ifelse(is.na(value_lat) | !is.finite(value_lat), value, value + value_lat))
 ####################
 
@@ -393,10 +474,10 @@ tsx$lat_c4[which(tsx$lat_c4 %in% cells_sat$cell_id)] = NA
 ## determine which vertical cell of a column gets filled in the next timestep
 ## depends on saturation state of cell
 layerfilling = dplyr::mutate(tsx, unsaturated = ifelse(sat, 10000, nlayer)) %>%
-               group_by(column, infProcess) %>%
+               dplyr::group_by(column, infProcess) %>%
                dplyr::summarize(layerfill = min(unsaturated, na.rm=T))
 tsx = dplyr::select(tsx, - layerfill) %>%
-      inner_join(layerfilling)
+      dplyr::inner_join(layerfilling)
 
 ## determine the number of cells in each column, which are to be filled in the next timestep
 ## this value is used to divide the avaivable water per timestep
@@ -406,10 +487,11 @@ cellnums_dynamic = dplyr::mutate(layerfilling, ncells = ifelse(infProcess == "ma
                    dplyr::group_by(column) %>%
                    dplyr::summarize(cellsLayerColumn = sum(ncells, na.rm=T))
 tsx = dplyr::select(tsx, - cellsLayerColumn) %>%
-      inner_join(cellnums_dynamic)
+      dplyr::inner_join(cellnums_dynamic)
 
 } # end for loop
-
+print("for-loop finished.")
+print("saving mass balance error file..")
 ## save mass balance error log
 save(mb_error, file=paste0(output_dir, "model_output/MassBalanceError_", n_param, ".rdata"))
 
@@ -464,11 +546,11 @@ system(systemcall_stich)
 print("read stiched output files")
 # regular read.table
 # data.tables fread
-Infiltration_model_results = fread(file=paste0(output_dir, "model_output/raw/rawdata"), header = T, sep="\t", dec=".", 
+Infiltration_model_results = data.table::fread(file=paste0(output_dir, "model_output/raw/rawdata"), header = T, sep="\t", dec=".", 
                                ## read only columns needed
                                select = c("x","y","z","Depth","value","datetime"))
 ## convert data.table to data.frame
-setDF(Infiltration_model_results)
+data.table::setDF(Infiltration_model_results)
 
 ####################
 ## check if all water was actually distributed
@@ -584,7 +666,7 @@ dev.off()
 ## regular KGE
 # kge_value = KGE(infiltration_gmod$gmod, igrav_timesteps$gmod)
 ## changing scaling factor of component BIAS
-kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)], s=c(2.5/6,2.5/6,1/6))
+kge_value = hydroGOF::KGE(infiltration_gmod$gmod, gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)], s=c(2.5/6,2.5/6,1/6))
 # kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
 kge_fit = 1 - kge_value
 

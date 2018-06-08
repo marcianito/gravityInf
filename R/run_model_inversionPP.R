@@ -45,7 +45,27 @@ run_model_inversionPP = function(
             del_prev,
             ...
 ){
+## library: necessary for parallel backend to work
+library(devtools)
+# setwd("/home/hydro/mreich/R/")
+load_all("/home/hydro/mreich/R/UmbrellaEffect")
+load_all("/home/hydro/mreich/R/gravityInf")
+##
+## ! has to be done using Rmpi
+# OR is automatically done !?
+##
+# library(doMPI)
+# print("start cluster")
+# # register and start cluster
+# cl = startMPIcluster(verbose = TRUE, logdir = "./log/mpi/")  # we do not give a number here, which means we take as much as we
+#                         # get- managed by the startup script
+# print("registering cluster")
+# registerDoMPI(cl) 	  # register cl for the foreach framework
+##
   ## create necessary output directories
+  print("output dir within inversion function:")
+  print(output_dir)
+  #
   if(!file.exists(paste0(output_dir, "model_output"))){
       dir.create(file.path(output_dir, "model_output"))
       dir.create(file.path(output_dir, "model_output", "plots"))
@@ -53,9 +73,9 @@ run_model_inversionPP = function(
   }
   ## delete results of previous inversion runs (and its log-files)
   # if not, ppso would try to extent these runs
-  if(del_prev & file.exists(paste0(output_dir, "dds.pro"))){
-    file.remove(paste0(output_dir, "dds.log"))
-    file.remove(paste0(output_dir, "dds.pro"))
+  if(del_prev & file.exists(paste0(output_dir, "ppso.pro"))){
+    file.remove(paste0(output_dir, "ppso.log"))
+    file.remove(paste0(output_dir, "ppso.pro"))
   }
 
   # load config file
@@ -97,6 +117,10 @@ run_model_inversionPP = function(
     # set name of model to use
     model = "inf_model_3d_single"
   }
+  # print param bounds and start values
+  print("print param bounds and start values")
+  print(param_bounds)
+  print(param_startvalue)
   
   # set counting parameter
   # this is used for naming figures and files for individiual model runs within the optimization routine
@@ -115,13 +139,13 @@ run_model_inversionPP = function(
       # objective_function = inf_model_3d_2macro, #set model to use, according to input parameters supplied
       objective_function = get(model), #set model to use, according to input parameters supplied
       number_of_parameters = length(param_bounds[,1]),
-      number_of_particles =  40,
+      number_of_particles =  10,
       max_number_function_calls= n_iterations,
-      nslaves = 100,
+      nslaves = 50,
       # r=0.2,
       abstol = -Inf,
       reltol = -Inf,
-      max_wait_iterations=50,
+      max_wait_iterations=10,
       parameter_bounds = param_bounds,
       initial_estimates = param_startvalue,
       lhc_init=FALSE,
@@ -171,6 +195,14 @@ run_model_inversionPP = function(
     model_info[,(param_num + info_columns_num)] = opt_result$par[param_num]
     colnames(model_info)[(param_num + info_columns_num)] = model_info_colnames[param_num]
   }
+
+## close cluster
+# closeCluster(cl)
+# print("cluster closed.")
+## close cluster
+print("closing R slaves")
+mpi.close.Rslaves()
+##
 
   # return model statistics and parameters
   return(model_info)
