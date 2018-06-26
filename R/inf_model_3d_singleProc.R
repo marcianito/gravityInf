@@ -195,7 +195,7 @@ if(use_scenario == "bypass"){
 layer_params = data.frame(Depth = zlayers,
                          infProcess = c(rep("none", pdepth_layer), rep("other", (length(zlayers) - pdepth_layer))),
                          nlayer = c(rep(10001, pdepth_layer), seq(1, length.out = (length(zlayers) - pdepth_layer))),
-                         dtheta = c(rep(0, pdepth_layer), rep(dtheta_other, (length(zlayers) - pdepth_layer)))
+                         dtheta = c(rep(0, pdepth_layer), rep(dtheta, (length(zlayers) - pdepth_layer)))
               )
 }
 ## macropores
@@ -281,9 +281,11 @@ tsx$datetime = i
 tsx = dplyr::mutate(tsx, value_macro = ifelse(infProcess == "macro" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn), prevalue)) %>%
       dplyr::mutate(value_macro = ifelse(infProcess == "macro", value_macro, 0)) %>%
       ## normal filing
-      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn) * vertflow_fac, prevalue)) %>%
+      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn), prevalue)) %>%
+      # dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn) * vertflow_fac, prevalue)) %>%
       ## adjust water amount for "vertically first filled cell", where all column water goes in !!
-      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill & aboveSat == F, value_other + (distrWater / cellsLayerColumn) * (1 - vertflow_fac), value_other)) %>%
+      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill & aboveSat == F, value_other + (distrWater / cellsLayerColumn), value_other)) %>%
+      # dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill & aboveSat == F, value_other + (distrWater / cellsLayerColumn) * (1 - vertflow_fac), value_other)) %>%
       dplyr::mutate(value_other = ifelse(infProcess == "other", value_other, 0)) %>%
       dplyr::mutate(value = value_macro + value_other)
 ####################

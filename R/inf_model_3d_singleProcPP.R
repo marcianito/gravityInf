@@ -1,4 +1,4 @@
-#' @title Hydro-gravimetric model (incl. lateral flow), for 2 different macro pore layers
+#' @title Hydro-gravimetric model for one single infiltration process
 #'
 #' @description 3D distribution algorithm, modeling the soil infiltration of water from a sprinkling experiment
 #'
@@ -13,22 +13,22 @@
 #' @references Marvin Reich (2017), mreich@@posteo.de
 #' @examples missing
 
-inf_model_3d_macro = function(param_1, param_2, param_3, param_4, param_5, param_6){
-# inf_model_3d_macro = function(param_vec, dummy1=0, dummy2=0, dummy3=0, dummy4=0, dummy5=0){
+inf_model_3d_singleProcPP = function(param_1, param_2){
 
 # ####################
 # ## debugging
 # param_vec = c(dtheta_macro_start, dtheta_other_start, mdepth_start, latflow_fac_start)
 # ####################
 
-
-print("param_2: ")
-print(param_2)
-print("param_6: ")
-print(param_6)
+# ##########
+# ## logging to file
+# logfile = paste0("irrigation zgrid: ",unique(Irrigation_in$zgrid))
+# write.table(logfile, file=paste0(dir_output, "logfile"), append=T)
+# print(paste0("n_param: ", n_param))
+# ##########
 
 ## construct parameter vector
-param_vec = c(param_1, param_2, param_3, param_4, param_5, param_6)
+param_vec = c(param_1, param_2)
 
 print("param_vec: ")
 print(param_vec)
@@ -46,7 +46,7 @@ load_all("/home/hydro/mreich/R/gravityInf")
 print("working directory:")
 print(getwd())
 print("setting new working directory (hard coded)")
-setwd("/home/hydro/mreich/Irrigation/inf_models/inf_model_oneM_test3PP/")
+setwd("/home/hydro/mreich/Irrigation/inf_models/inf_model_bypassPP/")
 print("NEW working directory:")
 print(getwd())
 
@@ -64,24 +64,11 @@ library(grid)
 library(scales)
 library(hydroGOF)
 library(data.table)
-# library(ppso)
-# for kriging
-# library(spacetime)
-# library(sp)
-# library(automap)
-
-# ##########
-# ## logging to file
-# logfile = paste0("irrigation zgrid: ",unique(Irrigation_in$zgrid))
-# write.table(logfile, file=paste0(dir_output, "logfile"), append=T)
-# print(paste0("n_param: ", n_param))
-# ##########
 
 ###################
 print("loading configfile..")
 ## load model configuration
 load(file="./configfile.rdata")
-print("configfile loaded.")
 input_dir = configfile$dir_input
 output_dir = configfile$dir_output
 precip_time = configfile$precip_time
@@ -98,8 +85,9 @@ x = configfile$discr_x
 y = configfile$discr_y
 z = configfile$discr_z
 mb_permitted_error = configfile$mb_permitted_error
-macropore_layer = configfile$use_macro
-macropore_layer2 = configfile$two_macro
+use_scenario = configfile$use_scenario
+# macropore_layer = configfile$use_macro
+# macropore_layer2 = configfile$two_macro
 n_iterations = configfile$model_runs
 plot_interval = configfile$plot_interval
 plot_transect_loc = configfile$plot_transect_loc
@@ -125,7 +113,7 @@ gravity_obs_data = read_data(gravity_obs, input_dir)
 colnames(gravity_obs_data)[2] = "gmod"
 # reduce time series by first value (in order to start at zero mass change)
 # gravity_obs_data = mutate(gravity_obs_data, gmod = gmod - min(gmod))
-gravity_obs_data = dplyr::mutate(gravity_obs_data, gmod = gmod - gmod[1])
+gravity_obs_data = mutate(gravity_obs_data, gmod = gmod - gmod[1])
 # gravity_timesteps = data.frame(datetime = 1:length(gravity_obs_data$gmod[-1]), gmod = gravity_obs_data$gmod[-1])
 gravity_timesteps = data.frame(datetime = 1:precip_time, gmod = gravity_obs_data$gmod[2:(precip_time+1)])
 
@@ -137,32 +125,20 @@ zlayers = round(unique(Irrigation_grid$Depth),1)
 num_cell = dim(Irrigation_grid)[1] / length(zlayers)
 # num_cell = length(unique(Irrigation_grid$x)) *  length(unique(Irrigation_grid$y))
 
-print("gcomp_grid, Irrigation grid, zlayer and num_cell")
-print(str(gcomp_grid))
-print(str(Irrigation_grid))
-print(str(zlayers))
-print(str(num_cell))
-print("unique irrigation values x,y")
-print(unique(Irrigation_grid$x))
-print(unique(Irrigation_grid$y))
-print("length Irrigation_grid col 1")
-print(length(Irrigation_grid[,1]))
-
-## set unique identifier for process on slave
-n_param = paste0(mpi.get.processor.name(), "_", mpi.comm.rank(), "_", format(Sys.time(), "%Y-%m-%d_%H%M"))
-print("n_param")
-print(n_param)
-
-
 # define factors for scaling between "side" and "corner" cell neighbours
 # following (Quinn 1997), where cardinal (side) and diagnol (corner) factors are summed
 # all 8 cells are delivered thus leading to the following factors
 # for side cells
 # 4 * 0.5/SUM(all factors for all cells) = 4 * 0.15
-sfactor = 0.6
+# sfactor = 0.6
 # for corner cells
 # 4 * 0.35/SUM(all factors for all cells) = 4 * 0.1
-cfactor = 0.4
+# cfactor = 0.4
+
+## set unique identifier for process on slave
+n_param = paste0(mpi.get.processor.name(), "_", mpi.comm.rank(), "_", format(Sys.time(), "%Y-%m-%d_%H%M"))
+print("n_param")
+print(n_param)
 
 # ## logging to file
 # logfile = paste0("irrigation Depth: ",unique(Irrigation_in$Depth))
@@ -177,42 +153,42 @@ Intensity_distribution = get(Intensity_distribution)
 stats = data.frame()
 
 print("Finished loading setup parameters.")
-message("Finished loading setup parameters.")
 
 ##########################################
 ## pass parameters from DDS-function param_vec space
 ##########################################
-dtheta_macro = param_vec[1]
-dtheta_other = param_vec[2]
+dtheta = param_vec[1]
+# dtheta_other = param_vec[2]
 # parameter values in meters have to be rounded
 # otherwise values will NOT match grid discretization !!
-mdepth = round(param_vec[3],1)
+# mdepth = round(param_vec[3],1)
 # lateral flow factor (seperate into lateral and vertical flow)
-latflow_fac = param_vec[4]
-vertflow_fac = 1 - latflow_fac
+# latflow_fac = param_vec[4]
+# vertflow_fac = 1 - latflow_fac
 # infiltration dynamics
 # round to integer values !!
-inf_dyn = round(param_vec[5])
+# inf_dyn = round(param_vec[5])
 # depth of other infiltration process
 # accounts / valid for: by-pass flow and perched water table
-pdepth = round(param_vec[6],1)
+pdepth = round(param_vec[2],1)
 
 ####################
 ## validity of some assumptions
-if(pdepth >= mdepth){
-  print(paste0("Problem with vertical layer distribution in paramterset: ",n_param))
-  n_param <<- n_param + 1
-  kge_fit = 1
-  return(kge_fit) 
-# if everything is okay, run normally
-}else{ 
+# if(pdepth >= mdepth){
+#   print(paste0("Problem with vertical layer distribution in paramterset: ",n_param))
+#   n_param <<- n_param + 1
+#   kge_fit = 1
+#   return(kge_fit) 
+# # if everything is okay, run normally
+# }else{ 
 
 ##########################################
 ## build up model domain space
 
 # depth of macropore layer thickness
 # determine vertical start
-mdepth_layer = which(zlayers == mdepth)
+mdepth_layer = which(zlayers == 0)
+# mdepth_layer = which(zlayers == mdepth)
 
 # # depth of pipe routing
 # otherdepth = mdepth - grid_discretization$z # [m]
@@ -220,15 +196,8 @@ mdepth_layer = which(zlayers == mdepth)
 pdepth_layer = which(zlayers == pdepth)
 # determine vertical start
 # other_layer = which(zlayers == otherdepth)
-layer_between_processes = pdepth_layer -  mdepth_layer
+# layer_between_processes = pdepth_layer -  mdepth_layer
 # ####################
-## degugging
-print("column: ")
-column = rep(1:num_cell, length(zlayers))
-print(column)
-print("dim Irrigation_grid")
-print(dim(Irrigation_grid))
-
 # 
 tsx = dplyr::mutate(Irrigation_grid,
       # column = rep(gridcells$ncell, length(zlayers))) %>%
@@ -248,99 +217,100 @@ tsx = dplyr::mutate(Irrigation_grid,
 # perched water table = 2
 # by-pass flow = 3
 
-print("defining grid of infiltration process")
+## ! this is designed, after modifying version of inf_model_3d_macro.R
 
 ## Wfa
-if(inf_dyn == 1){
+if(use_scenario == "wfa"){
 layer_params = data.frame(Depth = zlayers,
-                         infProcess = c(rep("macro", mdepth_layer), rep("other",(length(zlayers) - mdepth_layer))),
-                         nlayer = c(rep(1,mdepth_layer), seq(1,length.out=(length(zlayers) - mdepth_layer))),
-                         dtheta = c(rep(dtheta_macro,mdepth_layer), rep(dtheta_other,(length(zlayers) - mdepth_layer)))
+                         infProcess = c(rep("other", length(zlayers))),
+                         nlayer = c(seq(1, length.out = length(zlayers))),
+                         dtheta = c(rep(dtheta, length(zlayers)))
               )
 }
 ## perched water table
-if(inf_dyn == 2){
+if(use_scenario == "perched"){
 layer_params = data.frame(Depth = zlayers,
-                         infProcess = c(rep("macro", mdepth_layer), rep("other", layer_between_processes), rep("none",(length(zlayers) - pdepth_layer))),
-                         nlayer = c(rep(1,mdepth_layer), rev(seq(1,length.out=layer_between_processes)), rep(10001, (length(zlayers) - pdepth_layer))),
-                         dtheta = c(rep(dtheta_macro,mdepth_layer), rep(dtheta_other, layer_between_processes), rep(0,(length(zlayers) - pdepth_layer)))
+                         infProcess = c(rep("other", pdepth_layer), rep("none",(length(zlayers) - pdepth_layer))),
+                         nlayer = c(rev(seq(1, length.out = pdepth_layer)), rep(10001, (length(zlayers) - pdepth_layer))),
+                         dtheta = c(rep(dtheta, pdepth_layer), rep(0, (length(zlayers) - pdepth_layer)))
               )
 }
 ## by-pass flow
-if(inf_dyn == 3){
+if(use_scenario == "bypass"){
 layer_params = data.frame(Depth = zlayers,
-                         infProcess = c(rep("macro", mdepth_layer), rep("none", layer_between_processes), rep("other",(length(zlayers) - pdepth_layer))),
-                         nlayer = c(rep(1,mdepth_layer), rep(10001, layer_between_processes), seq(1,length.out=(length(zlayers) - pdepth_layer))),
-                         dtheta = c(rep(dtheta_macro,mdepth_layer), rep(0, layer_between_processes), rep(dtheta_other,(length(zlayers) - pdepth_layer)))
+                         infProcess = c(rep("none", pdepth_layer), rep("other", (length(zlayers) - pdepth_layer))),
+                         nlayer = c(rep(10001, pdepth_layer), seq(1, length.out = (length(zlayers) - pdepth_layer))),
+                         dtheta = c(rep(0, pdepth_layer), rep(dtheta, (length(zlayers) - pdepth_layer)))
               )
 }
-# old version
-# layer_params = data.frame(Depth = zlayers,
-#                          infProcess = c(rep("macro", mdepth_layer), rep("other",(length(zlayers) - mdepth_layer))),
-#                          nlayer = c(rep(1,mdepth_layer), seq(1,length.out=(length(zlayers) - mdepth_layer))),
-#                          dtheta = c(rep(dtheta_macro,mdepth_layer), rep(dtheta_other,(length(zlayers) - mdepth_layer)))
-#               )
+## macropores
+if(use_scenario == "macropores"){
+layer_params = data.frame(Depth = zlayers,
+                         infProcess = c(rep("macro", pdepth_layer), rep("none", (length(zlayers) - pdepth_layer))),
+                         nlayer = c(rep(1, pdepth_layer), seq(10001, length.out = (length(zlayers) - pdepth_layer))),
+                         dtheta = c(rep(dtheta, pdepth_layer), rep(0, (length(zlayers) - pdepth_layer)))
+              )
+}
 
 ## tag cells with layer parameters
-tsx = dplyr::inner_join(tsx, layer_params) # %>%
+tsx = inner_join(tsx, layer_params) # %>%
       # inner_join(Irrigation_grid)
 
 ## calculate number of "same" cells per layers in a column
-cellnums = dplyr::group_by(tsx, column, nlayer) %>%
+cellnums = group_by(tsx, column, nlayer) %>%
 # cellnums = group_by(tsx, column, nlayer, infProcess) %>%
            dplyr::summarize(cellsLayerColumn = sum(cnt, na.rm=T)) %>%
            ungroup()
 
 ## join with intensity distribution coefficents
-tsx = dplyr::inner_join(tsx, Intensity_distribution) %>%
-      dplyr::mutate(distrWater = water_vol_min * intensity / num_cell / vol_cell) %>%
-      dplyr::mutate(layerfill = 1) %>%
-      dplyr::inner_join(cellnums) %>%
+tsx = inner_join(tsx, Intensity_distribution) %>%
+      mutate(distrWater = water_vol_min * intensity / num_cell / vol_cell) %>%
+      mutate(layerfill = 1) %>%
+      inner_join(cellnums) %>%
       dplyr::select(-intensity) %>%
-      dplyr::mutate(sat = F) %>%
-      dplyr::mutate(aboveSat = F) %>%
-      dplyr::mutate(value_lat = NA) %>%
-      dplyr::mutate(lat_water = distrWater * latflow_fac) %>%
-      dplyr::mutate(cell_id = paste0(nlayer,"_",column,"_",infProcess))
+      mutate(sat = F) %>%
+      mutate(aboveSat = F) %>%
+      # mutate(value_lat = NA) %>%
+      # mutate(lat_water = distrWater * latflow_fac) %>%
+      mutate(cell_id = paste0(nlayer,"_",column,"_",infProcess))
 
-## construct database with cell neighbours
-celllayer = dplyr::filter(tsx, Depth == 0) %>%
-                 dplyr::select(x,y,column)
-
-# find side cells
-cellneig_sides =  as.data.frame(adjacent(rasterFromXYZ(as.data.frame(celllayer)), cell = seq(1,num_cell), directions=4, sorted=TRUE))
-cellneig_sides$nums = sequence(rle(cellneig_sides$from)$lengths)
-cellneig_sides$columns = paste0("lat_s",cellneig_sides$nums)
-# find corner cells
-cellneig_corners =  as.data.frame(adjacent(rasterFromXYZ(as.data.frame(celllayer)), cell = seq(1,num_cell), directions="bishop", sorted=TRUE))
-cellneig_corners$nums = sequence(rle(cellneig_corners$from)$lengths)
-cellneig_corners$columns = paste0("lat_c",cellneig_corners$nums)
-
-# cellneig_sides = spread(cellneig_sides, columns, to, fill=NA)
-cellneig_sides = dcast(cellneig_sides, from ~ columns ,fill = NA, value.var = "to")
-colnames(cellneig_sides)[1] = "column"
-# cellneig_corners = spread(cellneig_corners, columns, to, fill=NA)
-cellneig_corners = dcast(cellneig_corners, from ~ columns ,fill = NA, value.var = "to")
-colnames(cellneig_corners)[1] = "column"
-
-## join adjacent cells with cell-grid
-tsx = dplyr::left_join(tsx, cellneig_sides) %>%
-      dplyr::mutate(lat_s1 = ifelse(!is.na(lat_s1),paste0(nlayer,"_",lat_s1), lat_s1))%>%
-      dplyr::mutate(lat_s2 = ifelse(!is.na(lat_s2),paste0(nlayer,"_",lat_s2), lat_s2))%>%
-      dplyr::mutate(lat_s3 = ifelse(!is.na(lat_s3),paste0(nlayer,"_",lat_s3), lat_s3))%>%
-      dplyr::mutate(lat_s4 = ifelse(!is.na(lat_s4),paste0(nlayer,"_",lat_s4), lat_s4))%>%
-      dplyr::left_join(cellneig_corners) %>%
-      dplyr::mutate(lat_c1 = ifelse(!is.na(lat_c1),paste0(nlayer,"_",lat_c1), lat_c1))%>%
-      dplyr::mutate(lat_c2 = ifelse(!is.na(lat_c2),paste0(nlayer,"_",lat_c2), lat_c2))%>%
-      dplyr::mutate(lat_c3 = ifelse(!is.na(lat_c3),paste0(nlayer,"_",lat_c3), lat_c3))%>%
-      dplyr::mutate(lat_c4 = ifelse(!is.na(lat_c4),paste0(nlayer,"_",lat_c4), lat_c4))
+# ## construct database with cell neighbours
+# celllayer = dplyr::filter(tsx, Depth == 0) %>%
+#                  dplyr::select(x,y,column)
+# 
+# # find side cells
+# cellneig_sides =  as.data.frame(adjacent(rasterFromXYZ(as.data.frame(celllayer)), cell = seq(1,num_cell), directions=4, sorted=TRUE))
+# cellneig_sides$nums = sequence(rle(cellneig_sides$from)$lengths)
+# cellneig_sides$columns = paste0("lat_s",cellneig_sides$nums)
+# # find corner cells
+# cellneig_corners =  as.data.frame(adjacent(rasterFromXYZ(as.data.frame(celllayer)), cell = seq(1,num_cell), directions="bishop", sorted=TRUE))
+# cellneig_corners$nums = sequence(rle(cellneig_corners$from)$lengths)
+# cellneig_corners$columns = paste0("lat_c",cellneig_corners$nums)
+# 
+# # cellneig_sides = spread(cellneig_sides, columns, to, fill=NA)
+# cellneig_sides = dcast(cellneig_sides, from ~ columns ,fill = NA, value.var = "to")
+# colnames(cellneig_sides)[1] = "column"
+# # cellneig_corners = spread(cellneig_corners, columns, to, fill=NA)
+# cellneig_corners = dcast(cellneig_corners, from ~ columns ,fill = NA, value.var = "to")
+# colnames(cellneig_corners)[1] = "column"
+# 
+# ## join adjacent cells with cell-grid
+# tsx = left_join(tsx, cellneig_sides) %>%
+#       dplyr::mutate(lat_s1 = ifelse(!is.na(lat_s1),paste0(nlayer,"_",lat_s1), lat_s1))%>%
+#       dplyr::mutate(lat_s2 = ifelse(!is.na(lat_s2),paste0(nlayer,"_",lat_s2), lat_s2))%>%
+#       dplyr::mutate(lat_s3 = ifelse(!is.na(lat_s3),paste0(nlayer,"_",lat_s3), lat_s3))%>%
+#       dplyr::mutate(lat_s4 = ifelse(!is.na(lat_s4),paste0(nlayer,"_",lat_s4), lat_s4))%>%
+#       left_join(cellneig_corners) %>%
+#       dplyr::mutate(lat_c1 = ifelse(!is.na(lat_c1),paste0(nlayer,"_",lat_c1), lat_c1))%>%
+#       dplyr::mutate(lat_c2 = ifelse(!is.na(lat_c2),paste0(nlayer,"_",lat_c2), lat_c2))%>%
+#       dplyr::mutate(lat_c3 = ifelse(!is.na(lat_c3),paste0(nlayer,"_",lat_c3), lat_c3))%>%
+#       dplyr::mutate(lat_c4 = ifelse(!is.na(lat_c4),paste0(nlayer,"_",lat_c4), lat_c4))
 
 ## create mass balance error file
 mb_error = data.frame(datetime = seq(1:precip_time), error = NA, corrected = NA)
 
 ####################
 ## start with for loop and TS1
-print("starting with model for-loop..")
 for(i in 1:precip_time){ 
 # for(i in 3:10){ 
   # i=2
@@ -356,58 +326,60 @@ tsx$datetime = i
 tsx = dplyr::mutate(tsx, value_macro = ifelse(infProcess == "macro" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn), prevalue)) %>%
       dplyr::mutate(value_macro = ifelse(infProcess == "macro", value_macro, 0)) %>%
       ## normal filing
-      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn) * vertflow_fac, prevalue)) %>%
+      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn), prevalue)) %>%
+      # dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill, prevalue + (distrWater / cellsLayerColumn) * vertflow_fac, prevalue)) %>%
       ## adjust water amount for "vertically first filled cell", where all column water goes in !!
-      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill & aboveSat == F, value_other + (distrWater / cellsLayerColumn) * (1 - vertflow_fac), value_other)) %>%
+      dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill & aboveSat == F, value_other + (distrWater / cellsLayerColumn), value_other)) %>%
+      # dplyr::mutate(value_other = ifelse(infProcess == "other" & nlayer == layerfill & aboveSat == F, value_other + (distrWater / cellsLayerColumn) * (1 - vertflow_fac), value_other)) %>%
       dplyr::mutate(value_other = ifelse(infProcess == "other", value_other, 0)) %>%
       dplyr::mutate(value = value_macro + value_other)
 ####################
 
-####################
-## lateral water flow
-## distribution of water into adjecent neighbouring cells
-## all 8 cells in its surounding are considered, distinguishing
-## 1) side cells, bordering with a complete cell_width
-## 2) corner cells, connecting with the "origin cell" only at its corners
-## procedure is:
-## 1) find saturated cells
-## 2) exclude saturated neighbour-cells
-## 3) distribute later water (part of water_vol_min, depending on the factor lat_facflow chosen) into cells
-## 4) recombine later water with already existing water in each cell
-# sides
-lateral_flow_sides = dplyr::filter(tsx, sat == T) %>%
-# lateral_flow_sides = dplyr::filter(tt, sat == T) %>%
-                    dplyr::select(cell_id, nlayer, lat_water, lat_s1, lat_s2, lat_s3, lat_s4) %>%
-                    melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
-cnt_NOTna_cells = dplyr::group_by(lateral_flow_sides, cell_id) %>%
-                  dplyr::summarize(num_latcells = length(na.omit(value)))
-lateral_flow_sides = dplyr::left_join(lateral_flow_sides, cnt_NOTna_cells) %>%
-                    dplyr::mutate(value_lat = lat_water * sfactor / num_latcells) # %>%
-                    # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
-                    # dplyr::mutate(org_cell = cell_id)
-# corners
-lateral_flow_corners = dplyr::filter(tsx, sat == T) %>%
-                    dplyr::select(cell_id, nlayer, lat_water, lat_c1, lat_c2, lat_c3, lat_c4) %>%
-                    melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
-cnt_NOTna_cells = group_by(lateral_flow_corners, cell_id) %>%
-                  dplyr::summarize(num_latcells = length(na.omit(value)))
-lateral_flow_corners = dplyr::left_join(lateral_flow_corners, cnt_NOTna_cells) %>%
-                    dplyr::mutate(value_lat = lat_water * cfactor / num_latcells) # %>%
-                    # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
-                    # dplyr::mutate(org_cell = cell_id)
-# combine both
-lateral_flow_sc = rbind(lateral_flow_sides, lateral_flow_corners)
-                    # es muss auch noch geguckt werden, ob alle 4 cells je befüllt werden,
-                    # sonst muss noch skaliert werden !!!!
-## nach zusammenführen von corner und sides, noch nur 1 value_lat pro cellid schaffen
-# lateral_flows = group_by(lateral_flow_sc, lat_cell) %>%
-lateral_flows = dplyr::group_by(lateral_flow_sc, value) %>%
-                dplyr::summarize(value_lat = sum(value_lat, na.rm=T)) %>%
-                dplyr::mutate(lat_cell = value) %>%
-                dplyr::select(lat_cell, value_lat)
-
-tsx = dplyr::left_join(dplyr::select(tsx, -value_lat), as.data.frame(lateral_flows), by=c("cell_id" = "lat_cell")) %>%
-      dplyr::mutate(value = ifelse(is.na(value_lat) | !is.finite(value_lat), value, value + value_lat))
+# ####################
+# ## lateral water flow
+# ## distribution of water into adjecent neighbouring cells
+# ## all 8 cells in its surounding are considered, distinguishing
+# ## 1) side cells, bordering with a complete cell_width
+# ## 2) corner cells, connecting with the "origin cell" only at its corners
+# ## procedure is:
+# ## 1) find saturated cells
+# ## 2) exclude saturated neighbour-cells
+# ## 3) distribute later water (part of water_vol_min, depending on the factor lat_facflow chosen) into cells
+# ## 4) recombine later water with already existing water in each cell
+# # sides
+# lateral_flow_sides = dplyr::filter(tsx, sat == T) %>%
+# # lateral_flow_sides = dplyr::filter(tt, sat == T) %>%
+#                     dplyr::select(cell_id, nlayer, lat_water, lat_s1, lat_s2, lat_s3, lat_s4) %>%
+#                     melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
+# cnt_NOTna_cells = group_by(lateral_flow_sides, cell_id) %>%
+#                   dplyr::summarize(num_latcells = length(na.omit(value)))
+# lateral_flow_sides = left_join(lateral_flow_sides, cnt_NOTna_cells) %>%
+#                     dplyr::mutate(value_lat = lat_water * sfactor / num_latcells) # %>%
+#                     # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
+#                     # dplyr::mutate(org_cell = cell_id)
+# # corners
+# lateral_flow_corners = dplyr::filter(tsx, sat == T) %>%
+#                     dplyr::select(cell_id, nlayer, lat_water, lat_c1, lat_c2, lat_c3, lat_c4) %>%
+#                     melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
+# cnt_NOTna_cells = group_by(lateral_flow_corners, cell_id) %>%
+#                   dplyr::summarize(num_latcells = length(na.omit(value)))
+# lateral_flow_corners = left_join(lateral_flow_corners, cnt_NOTna_cells) %>%
+#                     dplyr::mutate(value_lat = lat_water * cfactor / num_latcells) # %>%
+#                     # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
+#                     # dplyr::mutate(org_cell = cell_id)
+# # combine both
+# lateral_flow_sc = rbind(lateral_flow_sides, lateral_flow_corners)
+#                     # es muss auch noch geguckt werden, ob alle 4 cells je befüllt werden,
+#                     # sonst muss noch skaliert werden !!!!
+# ## nach zusammenführen von corner und sides, noch nur 1 value_lat pro cellid schaffen
+# # lateral_flows = group_by(lateral_flow_sc, lat_cell) %>%
+# lateral_flows = group_by(lateral_flow_sc, value) %>%
+#                 dplyr::summarize(value_lat = sum(value_lat, na.rm=T)) %>%
+#                 dplyr::mutate(lat_cell = value) %>%
+#                 dplyr::select(lat_cell, value_lat)
+# 
+# tsx = left_join(dplyr::select(tsx, -value_lat), as.data.frame(lateral_flows), by=c("cell_id" = "lat_cell")) %>%
+#       dplyr::mutate(value = ifelse(is.na(value_lat) | !is.finite(value_lat), value, value + value_lat))
 ####################
 
 ####################
@@ -461,37 +433,36 @@ tsx$sat[which(tsx$cell_id %in% cells_sat$cell_id)] = T
 # except for the macro pores
 tsx$belowSatnLayer = paste(tsx$cell_id,"_", (tsx$nlayer))
 tsx$aboveSat[which(tsx$belowSatnLayer %in% cells_sat$belowSatnLayer & tsx$infProcess != "macro")] = T
-# set information NA, if neighbour cell is already saturated
-tsx$lat_s1[which(tsx$lat_s1 %in% cells_sat$cell_id)] = NA
-tsx$lat_s2[which(tsx$lat_s2 %in% cells_sat$cell_id)] = NA
-tsx$lat_s3[which(tsx$lat_s3 %in% cells_sat$cell_id)] = NA
-tsx$lat_s4[which(tsx$lat_s4 %in% cells_sat$cell_id)] = NA
-tsx$lat_c1[which(tsx$lat_c1 %in% cells_sat$cell_id)] = NA
-tsx$lat_c2[which(tsx$lat_c2 %in% cells_sat$cell_id)] = NA
-tsx$lat_c3[which(tsx$lat_c3 %in% cells_sat$cell_id)] = NA
-tsx$lat_c4[which(tsx$lat_c4 %in% cells_sat$cell_id)] = NA
+# # set information NA, if neighbour cell is already saturated
+# tsx$lat_s1[which(tsx$lat_s1 %in% cells_sat$cell_id)] = NA
+# tsx$lat_s2[which(tsx$lat_s2 %in% cells_sat$cell_id)] = NA
+# tsx$lat_s3[which(tsx$lat_s3 %in% cells_sat$cell_id)] = NA
+# tsx$lat_s4[which(tsx$lat_s4 %in% cells_sat$cell_id)] = NA
+# tsx$lat_c1[which(tsx$lat_c1 %in% cells_sat$cell_id)] = NA
+# tsx$lat_c2[which(tsx$lat_c2 %in% cells_sat$cell_id)] = NA
+# tsx$lat_c3[which(tsx$lat_c3 %in% cells_sat$cell_id)] = NA
+# tsx$lat_c4[which(tsx$lat_c4 %in% cells_sat$cell_id)] = NA
 
 ## determine which vertical cell of a column gets filled in the next timestep
 ## depends on saturation state of cell
 layerfilling = dplyr::mutate(tsx, unsaturated = ifelse(sat, 10000, nlayer)) %>%
-               dplyr::group_by(column, infProcess) %>%
+               group_by(column, infProcess) %>%
                dplyr::summarize(layerfill = min(unsaturated, na.rm=T))
 tsx = dplyr::select(tsx, - layerfill) %>%
-      dplyr::inner_join(layerfilling)
+      inner_join(layerfilling)
 
 ## determine the number of cells in each column, which are to be filled in the next timestep
 ## this value is used to divide the avaivable water per timestep
 ## and thus directly influences errors in mass balance
-cellnums_dynamic = dplyr::mutate(layerfilling, ncells = ifelse(infProcess == "macro" & layerfill < 2, mdepth_layer, 0)) %>%
+cellnums_dynamic = dplyr::mutate(layerfilling, ncells = ifelse(infProcess == "macro" & layerfill < 2, pdepth_layer, 0)) %>%
                    dplyr::mutate(ncells = ifelse(infProcess == "other", 1, ncells)) %>%
                    dplyr::group_by(column) %>%
                    dplyr::summarize(cellsLayerColumn = sum(ncells, na.rm=T))
 tsx = dplyr::select(tsx, - cellsLayerColumn) %>%
-      dplyr::inner_join(cellnums_dynamic)
+      inner_join(cellnums_dynamic)
 
 } # end for loop
-print("for-loop finished.")
-print("saving mass balance error file..")
+
 ## save mass balance error log
 save(mb_error, file=paste0(output_dir, "model_output/MassBalanceError_", n_param, ".rdata"))
 
@@ -550,7 +521,7 @@ Infiltration_model_results = data.table::fread(file=paste0(output_dir, "model_ou
                                ## read only columns needed
                                select = c("x","y","z","Depth","value","datetime"))
 ## convert data.table to data.frame
-data.table::setDF(Infiltration_model_results)
+setDF(Infiltration_model_results)
 
 ####################
 ## check if all water was actually distributed
@@ -666,7 +637,7 @@ dev.off()
 ## regular KGE
 # kge_value = KGE(infiltration_gmod$gmod, igrav_timesteps$gmod)
 ## changing scaling factor of component BIAS
-kge_value = hydroGOF::KGE(infiltration_gmod$gmod, gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)], s=c(2.5/6,2.5/6,1/6))
+kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)], s=c(2.5/6,2.5/6,1/6))
 # kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
 kge_fit = 1 - kge_value
 
@@ -675,15 +646,15 @@ kge_fit = 1 - kge_value
 rm(Infiltration_model_results, infiltration_gmod)
 gc()
 ## move to next n_param value for plot indexing
-# print(paste0("Finished parameterset: ",n_param))
-# n_param <<- n_param + 1
+print(paste0("Finished parameterset: ",n_param))
+n_param <<- n_param + 1
 
 ## returning quality criteria:
 ## KGE
 return(kge_fit) 
 
 ## else statement, runs if otherdepth > mdepth
-}
+# }
 
 print("Finished model run.")
 ####################
