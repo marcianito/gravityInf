@@ -13,7 +13,7 @@
 #' @references Marvin Reich (2017), mreich@@posteo.de
 #' @examples missing
 
-inf_model_3d_singleProcPP = function(param_1, param_2){
+inf_model_3d_singleProcLatFlowPP = function(param_1, param_2, param_3){
 
 # ####################
 # ## debugging
@@ -28,7 +28,7 @@ inf_model_3d_singleProcPP = function(param_1, param_2){
 # ##########
 
 ## construct parameter vector
-param_vec = c(param_1, param_2)
+param_vec = c(param_1, param_2, param_3)
 
 print("param_vec: ")
 print(param_vec)
@@ -163,8 +163,6 @@ dtheta = param_vec[1]
 # parameter values in meters have to be rounded
 # otherwise values will NOT match grid discretization !!
 # mdepth = round(param_vec[3],1)
-# lateral flow factor (seperate into lateral and vertical flow)
-# latflow_fac = param_vec[4]
 # vertflow_fac = 1 - latflow_fac
 # infiltration dynamics
 # round to integer values !!
@@ -172,6 +170,8 @@ dtheta = param_vec[1]
 # depth of other infiltration process
 # accounts / valid for: by-pass flow and perched water table
 pdepth = round(param_vec[2],1)
+# lateral flow factor (seperate into lateral and vertical flow)
+latflow_fac = param_vec[3]
 
 ####################
 ## validity of some assumptions
@@ -271,41 +271,41 @@ tsx = inner_join(tsx, Intensity_distribution) %>%
       dplyr::select(-intensity) %>%
       mutate(sat = F) %>%
       mutate(aboveSat = F) %>%
-      # mutate(value_lat = NA) %>%
-      # mutate(lat_water = distrWater * latflow_fac) %>%
+      mutate(value_lat = NA) %>%
+      mutate(lat_water = distrWater * latflow_fac) %>%
       mutate(cell_id = paste0(nlayer,"_",column,"_",infProcess))
 
-# ## construct database with cell neighbours
-# celllayer = dplyr::filter(tsx, Depth == 0) %>%
-#                  dplyr::select(x,y,column)
-# 
-# # find side cells
-# cellneig_sides =  as.data.frame(adjacent(rasterFromXYZ(as.data.frame(celllayer)), cell = seq(1,num_cell), directions=4, sorted=TRUE))
-# cellneig_sides$nums = sequence(rle(cellneig_sides$from)$lengths)
-# cellneig_sides$columns = paste0("lat_s",cellneig_sides$nums)
-# # find corner cells
-# cellneig_corners =  as.data.frame(adjacent(rasterFromXYZ(as.data.frame(celllayer)), cell = seq(1,num_cell), directions="bishop", sorted=TRUE))
-# cellneig_corners$nums = sequence(rle(cellneig_corners$from)$lengths)
-# cellneig_corners$columns = paste0("lat_c",cellneig_corners$nums)
-# 
-# # cellneig_sides = spread(cellneig_sides, columns, to, fill=NA)
-# cellneig_sides = dcast(cellneig_sides, from ~ columns ,fill = NA, value.var = "to")
-# colnames(cellneig_sides)[1] = "column"
-# # cellneig_corners = spread(cellneig_corners, columns, to, fill=NA)
-# cellneig_corners = dcast(cellneig_corners, from ~ columns ,fill = NA, value.var = "to")
-# colnames(cellneig_corners)[1] = "column"
-# 
-# ## join adjacent cells with cell-grid
-# tsx = left_join(tsx, cellneig_sides) %>%
-#       dplyr::mutate(lat_s1 = ifelse(!is.na(lat_s1),paste0(nlayer,"_",lat_s1), lat_s1))%>%
-#       dplyr::mutate(lat_s2 = ifelse(!is.na(lat_s2),paste0(nlayer,"_",lat_s2), lat_s2))%>%
-#       dplyr::mutate(lat_s3 = ifelse(!is.na(lat_s3),paste0(nlayer,"_",lat_s3), lat_s3))%>%
-#       dplyr::mutate(lat_s4 = ifelse(!is.na(lat_s4),paste0(nlayer,"_",lat_s4), lat_s4))%>%
-#       left_join(cellneig_corners) %>%
-#       dplyr::mutate(lat_c1 = ifelse(!is.na(lat_c1),paste0(nlayer,"_",lat_c1), lat_c1))%>%
-#       dplyr::mutate(lat_c2 = ifelse(!is.na(lat_c2),paste0(nlayer,"_",lat_c2), lat_c2))%>%
-#       dplyr::mutate(lat_c3 = ifelse(!is.na(lat_c3),paste0(nlayer,"_",lat_c3), lat_c3))%>%
-#       dplyr::mutate(lat_c4 = ifelse(!is.na(lat_c4),paste0(nlayer,"_",lat_c4), lat_c4))
+## construct database with cell neighbours
+celllayer = dplyr::filter(tsx, Depth == 0) %>%
+                 dplyr::select(x,y,column)
+
+# find side cells
+cellneig_sides =  as.data.frame(adjacent(rasterFromXYZ(as.data.frame(celllayer)), cell = seq(1,num_cell), directions=4, sorted=TRUE))
+cellneig_sides$nums = sequence(rle(cellneig_sides$from)$lengths)
+cellneig_sides$columns = paste0("lat_s",cellneig_sides$nums)
+# find corner cells
+cellneig_corners =  as.data.frame(adjacent(rasterFromXYZ(as.data.frame(celllayer)), cell = seq(1,num_cell), directions="bishop", sorted=TRUE))
+cellneig_corners$nums = sequence(rle(cellneig_corners$from)$lengths)
+cellneig_corners$columns = paste0("lat_c",cellneig_corners$nums)
+
+# cellneig_sides = spread(cellneig_sides, columns, to, fill=NA)
+cellneig_sides = dcast(cellneig_sides, from ~ columns ,fill = NA, value.var = "to")
+colnames(cellneig_sides)[1] = "column"
+# cellneig_corners = spread(cellneig_corners, columns, to, fill=NA)
+cellneig_corners = dcast(cellneig_corners, from ~ columns ,fill = NA, value.var = "to")
+colnames(cellneig_corners)[1] = "column"
+
+## join adjacent cells with cell-grid
+tsx = left_join(tsx, cellneig_sides) %>%
+      dplyr::mutate(lat_s1 = ifelse(!is.na(lat_s1),paste0(nlayer,"_",lat_s1), lat_s1))%>%
+      dplyr::mutate(lat_s2 = ifelse(!is.na(lat_s2),paste0(nlayer,"_",lat_s2), lat_s2))%>%
+      dplyr::mutate(lat_s3 = ifelse(!is.na(lat_s3),paste0(nlayer,"_",lat_s3), lat_s3))%>%
+      dplyr::mutate(lat_s4 = ifelse(!is.na(lat_s4),paste0(nlayer,"_",lat_s4), lat_s4))%>%
+      left_join(cellneig_corners) %>%
+      dplyr::mutate(lat_c1 = ifelse(!is.na(lat_c1),paste0(nlayer,"_",lat_c1), lat_c1))%>%
+      dplyr::mutate(lat_c2 = ifelse(!is.na(lat_c2),paste0(nlayer,"_",lat_c2), lat_c2))%>%
+      dplyr::mutate(lat_c3 = ifelse(!is.na(lat_c3),paste0(nlayer,"_",lat_c3), lat_c3))%>%
+      dplyr::mutate(lat_c4 = ifelse(!is.na(lat_c4),paste0(nlayer,"_",lat_c4), lat_c4))
 
 ## create mass balance error file
 mb_error = data.frame(datetime = seq(1:precip_time), error = NA, corrected = NA)
@@ -336,51 +336,51 @@ tsx = dplyr::mutate(tsx, value_macro = ifelse(infProcess == "macro" & nlayer == 
       dplyr::mutate(value = value_macro + value_other)
 ####################
 
-# ####################
-# ## lateral water flow
-# ## distribution of water into adjecent neighbouring cells
-# ## all 8 cells in its surounding are considered, distinguishing
-# ## 1) side cells, bordering with a complete cell_width
-# ## 2) corner cells, connecting with the "origin cell" only at its corners
-# ## procedure is:
-# ## 1) find saturated cells
-# ## 2) exclude saturated neighbour-cells
-# ## 3) distribute later water (part of water_vol_min, depending on the factor lat_facflow chosen) into cells
-# ## 4) recombine later water with already existing water in each cell
-# # sides
-# lateral_flow_sides = dplyr::filter(tsx, sat == T) %>%
-# # lateral_flow_sides = dplyr::filter(tt, sat == T) %>%
-#                     dplyr::select(cell_id, nlayer, lat_water, lat_s1, lat_s2, lat_s3, lat_s4) %>%
-#                     melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
-# cnt_NOTna_cells = group_by(lateral_flow_sides, cell_id) %>%
-#                   dplyr::summarize(num_latcells = length(na.omit(value)))
-# lateral_flow_sides = left_join(lateral_flow_sides, cnt_NOTna_cells) %>%
-#                     dplyr::mutate(value_lat = lat_water * sfactor / num_latcells) # %>%
-#                     # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
-#                     # dplyr::mutate(org_cell = cell_id)
-# # corners
-# lateral_flow_corners = dplyr::filter(tsx, sat == T) %>%
-#                     dplyr::select(cell_id, nlayer, lat_water, lat_c1, lat_c2, lat_c3, lat_c4) %>%
-#                     melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
-# cnt_NOTna_cells = group_by(lateral_flow_corners, cell_id) %>%
-#                   dplyr::summarize(num_latcells = length(na.omit(value)))
-# lateral_flow_corners = left_join(lateral_flow_corners, cnt_NOTna_cells) %>%
-#                     dplyr::mutate(value_lat = lat_water * cfactor / num_latcells) # %>%
-#                     # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
-#                     # dplyr::mutate(org_cell = cell_id)
-# # combine both
-# lateral_flow_sc = rbind(lateral_flow_sides, lateral_flow_corners)
-#                     # es muss auch noch geguckt werden, ob alle 4 cells je befüllt werden,
-#                     # sonst muss noch skaliert werden !!!!
-# ## nach zusammenführen von corner und sides, noch nur 1 value_lat pro cellid schaffen
-# # lateral_flows = group_by(lateral_flow_sc, lat_cell) %>%
-# lateral_flows = group_by(lateral_flow_sc, value) %>%
-#                 dplyr::summarize(value_lat = sum(value_lat, na.rm=T)) %>%
-#                 dplyr::mutate(lat_cell = value) %>%
-#                 dplyr::select(lat_cell, value_lat)
-# 
-# tsx = left_join(dplyr::select(tsx, -value_lat), as.data.frame(lateral_flows), by=c("cell_id" = "lat_cell")) %>%
-#       dplyr::mutate(value = ifelse(is.na(value_lat) | !is.finite(value_lat), value, value + value_lat))
+####################
+## lateral water flow
+## distribution of water into adjecent neighbouring cells
+## all 8 cells in its surounding are considered, distinguishing
+## 1) side cells, bordering with a complete cell_width
+## 2) corner cells, connecting with the "origin cell" only at its corners
+## procedure is:
+## 1) find saturated cells
+## 2) exclude saturated neighbour-cells
+## 3) distribute later water (part of water_vol_min, depending on the factor lat_facflow chosen) into cells
+## 4) recombine later water with already existing water in each cell
+# sides
+lateral_flow_sides = dplyr::filter(tsx, sat == T) %>%
+# lateral_flow_sides = dplyr::filter(tt, sat == T) %>%
+                    dplyr::select(cell_id, nlayer, lat_water, lat_s1, lat_s2, lat_s3, lat_s4) %>%
+                    melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
+cnt_NOTna_cells = group_by(lateral_flow_sides, cell_id) %>%
+                  dplyr::summarize(num_latcells = length(na.omit(value)))
+lateral_flow_sides = left_join(lateral_flow_sides, cnt_NOTna_cells) %>%
+                    dplyr::mutate(value_lat = lat_water * sfactor / num_latcells) # %>%
+                    # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
+                    # dplyr::mutate(org_cell = cell_id)
+# corners
+lateral_flow_corners = dplyr::filter(tsx, sat == T) %>%
+                    dplyr::select(cell_id, nlayer, lat_water, lat_c1, lat_c2, lat_c3, lat_c4) %>%
+                    melt(id=c("cell_id", "lat_water", "nlayer")) #%>%
+cnt_NOTna_cells = group_by(lateral_flow_corners, cell_id) %>%
+                  dplyr::summarize(num_latcells = length(na.omit(value)))
+lateral_flow_corners = left_join(lateral_flow_corners, cnt_NOTna_cells) %>%
+                    dplyr::mutate(value_lat = lat_water * cfactor / num_latcells) # %>%
+                    # dplyr::mutate(lat_cell = paste0(nlayer,"_",value)) # %>%
+                    # dplyr::mutate(org_cell = cell_id)
+# combine both
+lateral_flow_sc = rbind(lateral_flow_sides, lateral_flow_corners)
+                    # es muss auch noch geguckt werden, ob alle 4 cells je befüllt werden,
+                    # sonst muss noch skaliert werden !!!!
+## nach zusammenführen von corner und sides, noch nur 1 value_lat pro cellid schaffen
+# lateral_flows = group_by(lateral_flow_sc, lat_cell) %>%
+lateral_flows = group_by(lateral_flow_sc, value) %>%
+                dplyr::summarize(value_lat = sum(value_lat, na.rm=T)) %>%
+                dplyr::mutate(lat_cell = value) %>%
+                dplyr::select(lat_cell, value_lat)
+
+tsx = left_join(dplyr::select(tsx, -value_lat), as.data.frame(lateral_flows), by=c("cell_id" = "lat_cell")) %>%
+      dplyr::mutate(value = ifelse(is.na(value_lat) | !is.finite(value_lat), value, value + value_lat))
 ####################
 
 ####################
@@ -434,15 +434,15 @@ tsx$sat[which(tsx$cell_id %in% cells_sat$cell_id)] = T
 # except for the macro pores
 tsx$belowSatnLayer = paste(tsx$cell_id,"_", (tsx$nlayer))
 tsx$aboveSat[which(tsx$belowSatnLayer %in% cells_sat$belowSatnLayer & tsx$infProcess != "macro")] = T
-# # set information NA, if neighbour cell is already saturated
-# tsx$lat_s1[which(tsx$lat_s1 %in% cells_sat$cell_id)] = NA
-# tsx$lat_s2[which(tsx$lat_s2 %in% cells_sat$cell_id)] = NA
-# tsx$lat_s3[which(tsx$lat_s3 %in% cells_sat$cell_id)] = NA
-# tsx$lat_s4[which(tsx$lat_s4 %in% cells_sat$cell_id)] = NA
-# tsx$lat_c1[which(tsx$lat_c1 %in% cells_sat$cell_id)] = NA
-# tsx$lat_c2[which(tsx$lat_c2 %in% cells_sat$cell_id)] = NA
-# tsx$lat_c3[which(tsx$lat_c3 %in% cells_sat$cell_id)] = NA
-# tsx$lat_c4[which(tsx$lat_c4 %in% cells_sat$cell_id)] = NA
+# set information NA, if neighbour cell is already saturated
+tsx$lat_s1[which(tsx$lat_s1 %in% cells_sat$cell_id)] = NA
+tsx$lat_s2[which(tsx$lat_s2 %in% cells_sat$cell_id)] = NA
+tsx$lat_s3[which(tsx$lat_s3 %in% cells_sat$cell_id)] = NA
+tsx$lat_s4[which(tsx$lat_s4 %in% cells_sat$cell_id)] = NA
+tsx$lat_c1[which(tsx$lat_c1 %in% cells_sat$cell_id)] = NA
+tsx$lat_c2[which(tsx$lat_c2 %in% cells_sat$cell_id)] = NA
+tsx$lat_c3[which(tsx$lat_c3 %in% cells_sat$cell_id)] = NA
+tsx$lat_c4[which(tsx$lat_c4 %in% cells_sat$cell_id)] = NA
 
 ## determine which vertical cell of a column gets filled in the next timestep
 ## depends on saturation state of cell

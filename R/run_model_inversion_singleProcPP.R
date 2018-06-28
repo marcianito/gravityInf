@@ -25,8 +25,8 @@ run_model_inversion_singleProcPP = function(
             # mdepth_max,
             # mdepth2_min,
             # mdepth2_max,
-            # latflow_fac_min,
-            # latflow_fac_max,
+            latflow_fac_min = NA,
+            latflow_fac_max = NA,
             # inf_dynamics_min,
             # inf_dynamics_max,
             pdepth_min,
@@ -36,7 +36,7 @@ run_model_inversion_singleProcPP = function(
             # mdepth_start,
             # mdepth2_start,
             # dtheta_other_start,
-            # latflow_fac_start,
+            latflow_fac_start = NA,
             # inf_dynamics_start,
             pdepth_start,
             output_dir, 
@@ -48,7 +48,8 @@ run_model_inversion_singleProcPP = function(
   ## library: necessary for parallel backend to work
   library(devtools)
   # setwd("/home/hydro/mreich/R/")
-  load_all("/home/hydro/mreich/R/UmbrellaEffect")
+  load_all("/home/hydro/mreich/R/HyGra")
+  # load_all("/home/hydro/mreich/R/UmbrellaEffect")
   load_all("/home/hydro/mreich/R/gravityInf")
   ## create necessary output directories
   if(!file.exists(paste0(output_dir, "model_output"))){
@@ -70,6 +71,8 @@ run_model_inversion_singleProcPP = function(
   # macro2 = configfile$two_macro
 
   # prepare model input data and parameter boundaries
+  # no lateral flow module
+  if(is.na(latflow_fac_start)){
       # combine input parameters
       param_bounds = data.frame(minimum = c(dtheta_min, pdepth_min),
                             maximum = c(dtheta_max, pdepth_max))
@@ -79,6 +82,18 @@ run_model_inversion_singleProcPP = function(
       model_info_colnames = c("dtheta", "pdepth")
       # set name of model to use
       model = "inf_model_3d_singleProcPP"
+  # DO use lateral flow module
+  }else{
+      # combine input parameters
+      param_bounds = data.frame(minimum = c(dtheta_min, pdepth_min, latflow_fac_min),
+                            maximum = c(dtheta_max, pdepth_max, latflow_fac_max))
+      # combine start parameter values
+      param_startvalue = c(dtheta_start, pdepth_start, latflow_fac_start)
+      # column names for model output
+      model_info_colnames = c("dtheta", "pdepth", "latflow")
+      # set name of model to use
+      model = "inf_model_3d_singleProcLatFlowPP"
+  }
   
   # set counting parameter
   # this is used for naming figures and files for individiual model runs within the optimization routine
@@ -99,7 +114,7 @@ run_model_inversion_singleProcPP = function(
       number_of_parameters = length(param_bounds[,1]),
       number_of_particles =  10,
       max_number_function_calls= n_iterations,
-      nslaves = 500,
+      # nslaves = 500,
       # r=0.2,
       abstol = -Inf,
       reltol = -Inf,
