@@ -97,7 +97,7 @@ run_model_inversion_singleProcPP = function(
   
   # set counting parameter
   # this is used for naming figures and files for individiual model runs within the optimization routine
-  n_param <<- inner_inum
+  # n_param <<- inner_inum
   
   # store actual working directory
   wd_now = getwd()
@@ -114,7 +114,7 @@ run_model_inversion_singleProcPP = function(
       number_of_parameters = length(param_bounds[,1]),
       number_of_particles =  10,
       max_number_function_calls= n_iterations,
-      # nslaves = 500,
+      # nslaves = 20,
       # r=0.2,
       abstol = -Inf,
       reltol = -Inf,
@@ -130,7 +130,7 @@ run_model_inversion_singleProcPP = function(
       break_file=NULL,
       plot_progress=FALSE,
       verbose=TRUE,
-      tryCall=FALSE)
+      tryCall=TRUE)
 
   # set previous working directory
   setwd(wd_now)

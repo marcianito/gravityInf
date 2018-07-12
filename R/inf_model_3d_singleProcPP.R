@@ -46,10 +46,10 @@ load_all("/home/hydro/mreich/R/gravityInf")
 
 print("working directory:")
 print(getwd())
-print("setting new working directory (hard coded)")
-setwd("/home/hydro/mreich/Irrigation/inf_models/inf_model_bypassPP/")
-print("NEW working directory:")
-print(getwd())
+# print("setting new working directory (hard coded)")
+# setwd("/home/hydro/mreich/Irrigation/inf_models/inf_model_bypassPP/")
+# print("NEW working directory:")
+# print(getwd())
 
 library(zoo); Sys.setenv(TZ = "GMT")
 library(xts)
@@ -68,6 +68,7 @@ library(data.table)
 
 ###################
 print("loading configfile..")
+message("loading configfile..")
 ## load model configuration
 load(file="./configfile.rdata")
 input_dir = configfile$dir_input
@@ -154,6 +155,7 @@ Intensity_distribution = get(Intensity_distribution)
 stats = data.frame()
 
 print("Finished loading setup parameters.")
+message("Finished loading setup parameters.")
 
 ##########################################
 ## pass parameters from DDS-function param_vec space
@@ -312,6 +314,8 @@ mb_error = data.frame(datetime = seq(1:precip_time), error = NA, corrected = NA)
 
 ####################
 ## start with for loop and TS1
+print("Start model runs")
+message("Start model runs")
 for(i in 1:precip_time){ 
 # for(i in 3:10){ 
   # i=2
@@ -464,6 +468,8 @@ tsx = dplyr::select(tsx, - cellsLayerColumn) %>%
 
 } # end for loop
 
+print("End model runs")
+message("End model runs")
 ## save mass balance error log
 save(mb_error, file=paste0(output_dir, "model_output/MassBalanceError_", n_param, ".rdata"))
 
@@ -511,11 +517,13 @@ save(mb_error, file=paste0(output_dir, "model_output/MassBalanceError_", n_param
 ####################
 ## stich ascii files using bash
 print("stiching output files")
+message("stiching output files")
 systemcall_stich = paste0("cat ", output_dir, "model_output/raw/tsx_", n_param, "*.txt > ", output_dir, "model_output/raw/rawdata_", n_param)
 system(systemcall_stich)
 ####################
 ## load stitched file
 print("read stiched output files")
+message("read stiched output files")
 # regular read.table
 # data.tables fread
 Infiltration_model_results = data.table::fread(file=paste0(output_dir, "model_output/raw/rawdata_", n_param), header = T, sep="\t", dec=".", 
@@ -566,6 +574,7 @@ dev.off()
 }
 
 print(paste0("Saving Infiltration data for n_param: ", n_param))
+message(paste0("Saving Infiltration data for n_param: ", n_param))
 ## save data
 save(Infiltration_model_results, file=paste0(output_dir, "model_output/Infiltration_model_output_", n_param, ".rData"))
 
@@ -614,6 +623,7 @@ gcomp_grid$z = round(gcomp_grid$z, round_z)
 
 # calculating gravity reponse
 print("Calculating gravity response..")
+message("Calculating gravity response..")
 infiltration_gmod = calculate_gravity_response(gcomp_grid, Infiltration_model_results)
 #save gsignal
 save(infiltration_gmod, file=paste0(output_dir, "model_output/GravityResponse_Infiltration_model_", n_param, ".rData"))
@@ -648,7 +658,8 @@ rm(Infiltration_model_results, infiltration_gmod)
 gc()
 ## move to next n_param value for plot indexing
 print(paste0("Finished parameterset: ",n_param))
-n_param <<- n_param + 1
+message(paste0("Finished parameterset: ",n_param))
+# n_param <<- n_param + 1
 
 ## returning quality criteria:
 ## KGE
@@ -657,7 +668,8 @@ return(kge_fit)
 ## else statement, runs if otherdepth > mdepth
 # }
 
-print("Finished model run.")
+# print("Finished model run.")
+# message("Finished model run.")
 ####################
 } # end of function
 

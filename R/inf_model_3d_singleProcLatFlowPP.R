@@ -46,10 +46,10 @@ load_all("/home/hydro/mreich/R/gravityInf")
 
 print("working directory:")
 print(getwd())
-print("setting new working directory (hard coded)")
-setwd("/home/hydro/mreich/Irrigation/inf_models/inf_model_bypassPP/")
-print("NEW working directory:")
-print(getwd())
+# print("setting new working directory (hard coded)")
+# setwd("/home/hydro/mreich/Irrigation/inf_models/inf_model_bypassPP/")
+# print("NEW working directory:")
+# print(getwd())
 
 library(zoo); Sys.setenv(TZ = "GMT")
 library(xts)
@@ -648,7 +648,8 @@ rm(Infiltration_model_results, infiltration_gmod)
 gc()
 ## move to next n_param value for plot indexing
 print(paste0("Finished parameterset: ",n_param))
-n_param <<- n_param + 1
+message(paste0("Finished parameterset: ",n_param))
+# n_param <<- n_param + 1
 
 ## returning quality criteria:
 ## KGE
@@ -657,7 +658,7 @@ return(kge_fit)
 ## else statement, runs if otherdepth > mdepth
 # }
 
-print("Finished model run.")
+# print("Finished model run.")
 ####################
 } # end of function
 
