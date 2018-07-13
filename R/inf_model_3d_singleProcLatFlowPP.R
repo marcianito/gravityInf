@@ -92,6 +92,9 @@ use_scenario = configfile$use_scenario
 n_iterations = configfile$model_runs
 plot_interval = configfile$plot_interval
 plot_transect_loc = configfile$plot_transect_loc
+## which objective function to use?
+# options are: KGE or gini
+objectiveFunction = configfile$objFunction
 
 # construct grid discretization
 grid_discretization = data.frame(x, y, z)
@@ -638,9 +641,17 @@ dev.off()
 ## regular KGE
 # kge_value = KGE(infiltration_gmod$gmod, igrav_timesteps$gmod)
 ## changing scaling factor of component BIAS
+if(objectiveFunction == "KGE"){
 kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)], s=c(2.5/6,2.5/6,1/6))
 # kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
-kge_fit = 1 - kge_value
+best_fit = 1 - kge_value
+}
+if(objectiveFunction == "gini"){
+## gini coefficient
+gini_value = gini(sim = infiltration_gmod$gmod, obs = gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)])
+# kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
+best_fit = abs(gini_value)
+}
 
 ####################
 ## clean up memory
@@ -652,8 +663,7 @@ message(paste0("Finished parameterset: ",n_param))
 # n_param <<- n_param + 1
 
 ## returning quality criteria:
-## KGE
-return(kge_fit) 
+return(best_fit) 
 
 ## else statement, runs if otherdepth > mdepth
 # }
