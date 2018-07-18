@@ -134,10 +134,10 @@ num_cell = dim(Irrigation_grid)[1] / length(zlayers)
 # all 8 cells are delivered thus leading to the following factors
 # for side cells
 # 4 * 0.5/SUM(all factors for all cells) = 4 * 0.15
-# sfactor = 0.6
+sfactor = 0.6
 # for corner cells
 # 4 * 0.35/SUM(all factors for all cells) = 4 * 0.1
-# cfactor = 0.4
+cfactor = 0.4
 
 ## set unique identifier for process on slave
 n_param = paste0(mpi.get.processor.name(), "_", mpi.comm.rank(), "_", format(Sys.time(), "%Y-%m-%d_%H%M"))
