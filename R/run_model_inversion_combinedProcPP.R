@@ -48,6 +48,12 @@ run_model_inversion_combinedProcPP = function(
       dir.create(file.path(output_dir, "model_output", "plots"))
       dir.create(file.path(output_dir, "model_output", "raw"))
   }
+  if(!file.exists(paste0(output_dir, "model_output/plots"))){
+      dir.create(file.path(output_dir, "model_output", "plots"))
+  }
+  if(!file.exists(paste0(output_dir, "model_output/raw"))){
+      dir.create(file.path(output_dir, "model_output", "raw"))
+  }
   ## delete results of previous inversion runs (and its log-files)
   # if not, ppso would try to extent these runs
   if(del_prev & file.exists(paste0(output_dir, "ppso.pro"))){
