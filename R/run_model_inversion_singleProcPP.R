@@ -114,6 +114,7 @@ run_model_inversion_singleProcPP = function(
       number_of_parameters = length(param_bounds[,1]),
       number_of_particles =  10,
       max_number_function_calls= n_iterations,
+      max_number_of_iterations= n_iterations,
       # nslaves = 20,
       # r=0.2,
       abstol = -Inf,
@@ -176,6 +177,12 @@ run_model_inversion_singleProcPP = function(
   print("closing R slaves")
   mpi.close.Rslaves()
   ##
+  # delete raw directory
+  # this has the reason for unique file names, 
+  # thus adding new files for every run and
+  # a maximum number of files per folder on cluster of 51 million
+  unlink(paste0(output_dir, "model_output/raw"), recursive = TRUE)
+
   # return model statistics and parameters
   return(model_info)
 }
