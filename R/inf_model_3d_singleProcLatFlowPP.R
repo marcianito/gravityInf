@@ -523,9 +523,14 @@ print("read stiched output files")
 # data.tables fread
 Infiltration_model_results = data.table::fread(file=paste0(output_dir, "model_output/raw/rawdata_", n_param), header = T, sep="\t", dec=".", 
                                ## read only columns needed
-                               select = c("x","y","z","Depth","value","datetime"))
+                           select = c("x","y","z","Depth","value","datetime"))
 ## convert data.table to data.frame
 setDF(Infiltration_model_results)
+####################
+## delete raw single files
+print("deleting raw output files")
+systemcall_del = paste0("rm ", output_dir, "model_output/raw/tsx_", n_param, "*.txt")
+system(systemcall_del)
 
 ####################
 ## check if all water was actually distributed
