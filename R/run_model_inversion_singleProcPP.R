@@ -187,7 +187,7 @@ run_model_inversion_singleProcPP = function(
   # this has the reason for unique file names, 
   # thus adding new files for every run and
   # a maximum number of files per folder on cluster of 51 million
-  unlink(paste0(output_dir, "model_output/raw"), recursive = TRUE)
+  # unlink(paste0(output_dir, "model_output/raw"), recursive = TRUE)
 
   # return model statistics and parameters
   return(model_info)
