@@ -247,6 +247,14 @@ layer_params = data.frame(Depth = zlayers,
                          dtheta = c(rep(dtheta, pdepth_layer), rep(0, layers_between_processes), rep(dtheta2, (length(zlayers) - pdepth2_layer)))
               )
 }
+## macropores AND perched water table
+if(use_scenario == "macropores" & use_scenario2 == "perched"){
+layer_params = data.frame(Depth = zlayers,
+                         infProcess = c(rep("macro", pdepth_layer), rep("other", layers_between_processes), rep("none",(length(zlayers) - pdepth2_layer))),
+                         nlayer = c(rep(1, pdepth_layer), seq(1, length.out= layers_between_processes), rep(10001, (length(zlayers) - pdepth2_layer))),
+                         dtheta = c(rep(dtheta, pdepth_layer), rep(dtheta2, layers_between_processes), rep(0, (length(zlayers) - pdepth2_layer)))
+              )
+}
 ## macropores
 # if(use_scenario == "macropores"){
 # layer_params = data.frame(Depth = zlayers,
