@@ -92,6 +92,17 @@ run_model_inversion_combinedProcPP = function(
         # set name of model to use
         model = "inf_model_3d_combinedProcLatFlowPP"
              },
+      perched = {
+        # combine input parameters
+        param_bounds = data.frame(minimum = c(dtheta_min, dtheta2_min, pdepth_min, pdepth2_min, latflow_fac_min),
+                              maximum = c(dtheta_max, dtheta_max, pdepth_max, pdepth2_max, latflow_fac_max))
+        # combine start parameter values
+        param_startvalue = c(dtheta_start, dtheta2_start, pdepth_start, pdepth2_start, latflow_fac_start)
+        # column names for model output
+        model_info_colnames = c("dtheta", "dtheta2", "pdepth", "pdepth2", "latflow")
+        # set name of model to use
+        model = "inf_model_3d_combinedProcLatFlowPP"
+             },
       wfa = {
         # combine input parameters
         param_bounds = data.frame(minimum = c(dtheta_min, dtheta2_min, pdepth_min, latflow_fac_min),
