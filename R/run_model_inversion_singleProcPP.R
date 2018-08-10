@@ -29,8 +29,8 @@ run_model_inversion_singleProcPP = function(
             latflow_fac_max = NA,
             # inf_dynamics_min,
             # inf_dynamics_max,
-            pdepth_min,
-            pdepth_max,
+            pdepth_min = NA,
+            pdepth_max = NA,
             dtheta_start,
             # dtheta_macro2_start,
             # mdepth_start,
@@ -38,7 +38,7 @@ run_model_inversion_singleProcPP = function(
             # dtheta_other_start,
             latflow_fac_start = NA,
             # inf_dynamics_start,
-            pdepth_start,
+            pdepth_start = NA,
             output_dir, 
             input_dir,
             inner_inum,
@@ -79,6 +79,17 @@ run_model_inversion_singleProcPP = function(
   # prepare model input data and parameter boundaries
   # no lateral flow module
   if(is.na(latflow_fac_start)){
+      if(scenario == "wfa"){
+      # combine input parameters
+      param_bounds = data.frame(minimum = c(dtheta_min),
+                            maximum = c(dtheta_max))
+      # combine start parameter values
+      param_startvalue = c(dtheta_start)
+      # column names for model output
+      model_info_colnames = c("dtheta")
+      # set name of model to use
+      model = "inf_model_3d_singleProc_wfaPP"
+      }else{
       # combine input parameters
       param_bounds = data.frame(minimum = c(dtheta_min, pdepth_min),
                             maximum = c(dtheta_max, pdepth_max))
@@ -88,8 +99,20 @@ run_model_inversion_singleProcPP = function(
       model_info_colnames = c("dtheta", "pdepth")
       # set name of model to use
       model = "inf_model_3d_singleProcPP"
+      }
   # DO use lateral flow module
   }else{
+      if(scenario == "wfa"){
+      # combine input parameters
+      param_bounds = data.frame(minimum = c(dtheta_min, latflow_fac_min),
+                            maximum = c(dtheta_max, latflow_fac_max))
+      # combine start parameter values
+      param_startvalue = c(dtheta_start, latflow_fac_start)
+      # column names for model output
+      model_info_colnames = c("dtheta",  "latflow")
+      # set name of model to use
+      model = "inf_model_3d_singleProcLatFlow_wfaPP"
+      }else{
       # combine input parameters
       param_bounds = data.frame(minimum = c(dtheta_min, pdepth_min, latflow_fac_min),
                             maximum = c(dtheta_max, pdepth_max, latflow_fac_max))
@@ -99,6 +122,7 @@ run_model_inversion_singleProcPP = function(
       model_info_colnames = c("dtheta", "pdepth", "latflow")
       # set name of model to use
       model = "inf_model_3d_singleProcLatFlowPP"
+      }
   }
   
   # set counting parameter
