@@ -39,7 +39,8 @@ For bug fixes, comments or further development please contact: mreich@posteo.de.
 ### Computationally
 * r-base version 3.3.1
 * gravity R-package [HyGra](http://github.com/marcianito/HyGra) (for standard routines): `devtools::install_github("marcianito/HyGra")`
-* following R-packages: devtools, dplyr, ggplot2, gstat, ..., reshape2, viridis, xts, zoo, doParralel, foreach, ...
+* [ppso](http://github.com/TillF/ppso): `devtools::install_github("TillF/ppso")`
+* following R-packages: devtools, dplyr, ggplot2, reshape2, viridis, xts, zoo, doParralel, foreach, ..whatmore??..
 * system libraries for devtools
 
 in debian install using: 
