@@ -1,10 +1,10 @@
-Repository containing scripts related to _Reich et al., (2017, ???)_ publication
+Repository containing scripts related to _Reich et al. (2019)_ publication
 ======================================================================
 **Article:**  
-Marvin Reich<sup>1</sup>, Michal Mikolaj<sup>1</sup>, Theresa Blume<sup>1</sup>, Andreas Güntner<sup>1,4</sup>: **_TITLE_**, published in: [???](http://link.com), **2017**
+Marvin Reich<sup>1</sup>, Michal Mikolaj<sup>1</sup>, Theresa Blume<sup>1</sup>, Andreas Güntner<sup>1,4</sup>: **2019**. **_TITLE_**, published in: [???](http://link.com)
 
 **Affiliation**  
-<sup>1</sup>Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences, Section 5.4 Hydrology, 14473 Potsdam, Germany  
+<sup>1</sup>Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences, Section Hydrology, 14473 Potsdam, Germany  
 <sup>2</sup>University of Potsdam, Institute of Earth and Environmental Science, 14476 Potsdam, Germany
 > _Please cite this article when using here provided scripts_
 
@@ -24,22 +24,21 @@ For bug fixes, comments or further development please contact: mreich@posteo.de.
 ## Installation
 
 1. Start R
-2. Install package-dependence via devtools: 
-`devtools::install_github("marcianito/UmbrellaEffect")`
+
+2. Install all dependencies
 
 3. Install package via devtools: 
 `devtools::install_github("marcianito/gravityInf")`
 
 4. load packages: 
-`library(UmbrellaEffect)`; 
+`library(HyGra)`; 
 `library(gravityInf)`
 
 ## Dependencies
 
 ### Computationally
 * r-base version 3.3.1
-* other gravity R-package, containing basic functions for gravity grid setups: UmbrellaEffect
-* for further dependencies of UmbrellaEffect package, please visit [here](http://github.com/marcianito/UmbrellaEffect)
+* gravity R-package [HyGra](http://github.com/marcianito/HyGra) (for standard routines): `devtools::install_github("marcianito/HyGra")`
 * following R-packages: devtools, dplyr, ggplot2, gstat, ..., reshape2, viridis, xts, zoo, doParralel, foreach, ...
 * system libraries for devtools
 
