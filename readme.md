@@ -67,18 +67,18 @@ It is necessary to have a time series of observed gravity data (could be synthet
 
 All changes should be done in a new file following (or a copy of) the infiltration_example.r file.
 
-General setup:
+**General setup**:
 
 * Directory and configs (input / output, file extentions, enable plotting)
 
-Gravity grid setup: 
+**Gravity grid setup**: 
 
 * Gravimeter coordinates (x, y, z + height of sensor)
 * Model domain (x and y extensions) and discretization
 * Input file to load for DEM input
 * Input file settings (data dimensions, order of data columns from input files)
 
-Inverse sprinkling modeling setup:
+**Inverse sprinkling modeling setup**:
 
 * Input file of observed gravity signal
 * Input file water intensity distribution
