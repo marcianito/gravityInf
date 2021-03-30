@@ -69,28 +69,28 @@ All changes should be done in a new file following (or a copy of) the infiltrati
 
 General setup:
 
-	* _Directory and configs (input / output, file extentions, enable plotting)_
+* Directory and configs (input / output, file extentions, enable plotting)
 
 Gravity grid setup: 
 
-	* _Gravimeter coordinates (x, y, z + height of sensor)_
-	* _Model domain (x and y extensions) and discretization_
-	* _Input file to load for DEM input_
-	* _Input file settings (data dimensions, order of data columns from input files)_
+* Gravimeter coordinates (x, y, z + height of sensor)
+* Model domain (x and y extensions) and discretization
+* Input file to load for DEM input
+* Input file settings (data dimensions, order of data columns from input files)
 
 Inverse sprinkling modeling setup:
 
-	* _Input file of observed gravity signal_
-	* _Input file water intensity distribution_
-	* _Interpolation method_
-	* _Number of model runs_
-	* _Objective function_
-	* _Senario types for different layers_
-	* _Duration of sprinkling_
-	* _Select combined processes and/or lateral flow_
-	* _Allowed mass balance error_
-	* _Input water volume of experiment_
-	* _Model parameter values (min, max)_
-	* _Model parameter starting values_
-	* _Plotting options_
+* Input file of observed gravity signal
+* Input file water intensity distribution
+* Interpolation method
+* Number of model runs
+* Objective function
+* Senario types for different layers
+* Duration of sprinkling
+* Select combined processes and/or lateral flow
+* Allowed mass balance error
+* Input water volume of experiment
+* Model parameter values (min, max)
+* Model parameter starting values
+* Plotting options
 
