@@ -48,9 +48,9 @@ run_model_inversion_singleProcPP = function(
   ## library: necessary for parallel backend to work
   library(devtools)
   # setwd("/home/hydro/mreich/R/")
-  load_all("/home/hydro/mreich/R/HyGra")
+  load_all("/home/mreich/R/HyGra")
   # load_all("/home/hydro/mreich/R/UmbrellaEffect")
-  load_all("/home/hydro/mreich/R/gravityInf")
+  load_all("/home/mreich/R/gravityInf")
   ## create necessary output directories
   if(!file.exists(paste0(output_dir, "model_output"))){
       dir.create(file.path(output_dir, "model_output"))
@@ -89,6 +89,16 @@ run_model_inversion_singleProcPP = function(
       model_info_colnames = c("dtheta")
       # set name of model to use
       model = "inf_model_3d_singleProc_wfaPP"
+      }else if(scenario == "prefflow"){
+      # combine input parameters
+      param_bounds = data.frame(minimum = c(dtheta_min, pdepth_min),
+                            maximum = c(dtheta_max, pdepth_max))
+      # combine start parameter values
+      param_startvalue = c(dtheta_start, pdepth_start)
+      # column names for model output
+      model_info_colnames = c("dtheta", "fac_prefcelWith")
+      # set name of model to use
+      model = "inf_model_3d_singleProc_prefflowPP"
       }else{
       # combine input parameters
       param_bounds = data.frame(minimum = c(dtheta_min, pdepth_min),
@@ -112,6 +122,16 @@ run_model_inversion_singleProcPP = function(
       model_info_colnames = c("dtheta",  "latflow")
       # set name of model to use
       model = "inf_model_3d_singleProcLatFlow_wfaPP"
+      }else if(scenario == "prefflow"){
+      # combine input parameters
+      param_bounds = data.frame(minimum = c(dtheta_min, latflow_fac_min, pdepth_min),
+                            maximum = c(dtheta_max, latflow_fac_max, pdepth_max))
+      # combine start parameter values
+      param_startvalue = c(dtheta_start, latflow_fac_start, pdepth_start)
+      # column names for model output
+      model_info_colnames = c("dtheta", "latflow", "fac_prefcelWith")
+      # set name of model to use
+      model = "inf_model_3d_singleProcLatFlow_prefflowPP"
       }else{
       # combine input parameters
       param_bounds = data.frame(minimum = c(dtheta_min, pdepth_min, latflow_fac_min),
@@ -136,7 +156,8 @@ run_model_inversion_singleProcPP = function(
 
   # get number of desired model runs
   n_iterations = configfile$model_runs
-  
+    
+  message("starting optimazation")
   ## run optimization
   opt_result = optim_ppso_robust(
       # objective_function = inf_model_3d_2macro, #set model to use, according to input parameters supplied
@@ -165,6 +186,7 @@ run_model_inversion_singleProcPP = function(
       verbose=TRUE,
       tryCall=TRUE)
 
+  message("finished optimazation")
   # set previous working directory
   setwd(wd_now)
 
@@ -214,6 +236,7 @@ run_model_inversion_singleProcPP = function(
   # unlink(paste0(output_dir, "model_output/raw"), recursive = TRUE)
 
   # return model statistics and parameters
+  message("end of function RUN_model_inversion_singleProcPP.R")
   return(model_info)
 }
 

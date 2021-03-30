@@ -1,4 +1,4 @@
-#' @title Hydro-gravimetric model for one single infiltration process
+#' @title Hydro-gravimetric model for combined infiltration processes
 #'
 #' @description 3D distribution algorithm, modeling the soil infiltration of water from a sprinkling experiment
 #'

@@ -1,6 +1,6 @@
 Package: gravityInf
 Title: Infiltration (sprinkling) and continious realtive gravity measurements
-Version: 0.9
+Version: 1.0
 Authors@R: person("Marvin", "Reich", email = "mreich@posteo.de", role = c("aut", "cre"))
 Description: Set up, model and evaluate infiltration in a certain area around a (relative) gravimeter, 
              measuring continiously throughout the infiltration time.
@@ -18,7 +18,7 @@ Imports: dplyr,
          gstat,
          ptinpoly,
          devtools,
-         UmbrellaEffect,
+         HyGra,
          hydroGOF,
          doParallel,
          foreach,

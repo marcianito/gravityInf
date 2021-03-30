@@ -39,9 +39,9 @@ run_model_inversion_combinedProcPP = function(
   ## library: necessary for parallel backend to work
   library(devtools)
   # setwd("/home/hydro/mreich/R/")
-  load_all("/home/hydro/mreich/R/HyGra")
+  load_all("/home/mreich/R/HyGra")
   # load_all("/home/hydro/mreich/R/UmbrellaEffect")
-  load_all("/home/hydro/mreich/R/gravityInf")
+  load_all("/home/mreich/R/gravityInf")
   ## create necessary output directories
   if(!file.exists(paste0(output_dir, "model_output"))){
       dir.create(file.path(output_dir, "model_output"))
@@ -64,6 +64,7 @@ run_model_inversion_combinedProcPP = function(
   # load config file
   load(file=paste0(output_dir, "configfile.rdata"))
   scenario2 = configfile$use_scenario2
+  scenario1 = configfile$use_scenario
 
   # prepare model input data and parameter boundaries
   # no lateral flow module
@@ -115,6 +116,19 @@ run_model_inversion_combinedProcPP = function(
         model = "inf_model_3d_combinedProcLatFlow_wfaPP"
       }
       )
+      if(scenario1 == "prefflow"){
+        # combine input parameters
+        ## !
+        # for "prefflow", pdepth2 == fac_prefflowcelWidth
+        param_bounds = data.frame(minimum = c(dtheta_min, dtheta2_min, pdepth_min, latflow_fac_min, pdepth2_min),
+                              maximum = c(dtheta_max, dtheta_max, pdepth_max, latflow_fac_max, pdepth2_max))
+        # combine start parameter values
+        param_startvalue = c(dtheta_start, dtheta2_start, pdepth_start, latflow_fac_start, pdepth2_start)
+        # column names for model output
+        model_info_colnames = c("dtheta", "dtheta2", "pdepth", "latflow", "fac_prefcelWidth")
+        # set name of model to use
+        model = "inf_model_3d_combinedProcLatFlow_prefflowPP"
+      }
   }
   
   # set counting parameter

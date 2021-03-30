@@ -40,9 +40,9 @@ print("loading libraries WITHIN inf_model")
 message("loading libraries WITHIN inf_model")
 library(devtools)
 # setwd("/home/hydro/mreich/R/")
-load_all("/home/hydro/mreich/R/HyGra")
+load_all("/home/mreich/R/HyGra")
 # load_all("/home/hydro/mreich/R/UmbrellaEffect")
-load_all("/home/hydro/mreich/R/gravityInf")
+load_all("/home/mreich/R/gravityInf")
 
 print("working directory:")
 print(getwd())
@@ -640,9 +640,22 @@ dev.off()
 ## regular KGE
 # kge_value = KGE(infiltration_gmod$gmod, igrav_timesteps$gmod)
 ## changing scaling factor of component BIAS
+if(objectiveFunction == "KGE"){
 kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)], s=c(2.5/6,2.5/6,1/6))
 # kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
-kge_fit = 1 - kge_value
+best_fit = 1 - kge_value
+}
+if(objectiveFunction == "gini"){
+## gini coefficient
+gini_value = gini(sim = infiltration_gmod$gmod, obs = gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)])
+# kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
+best_fit = abs(gini_value)
+}
+if(objectiveFunction == "mNSE"){
+mNSE_value = mNSE(infiltration_gmod$gmod, gravity_timesteps$gmod[1:length(infiltration_gmod$gmod)])
+# kge_value = KGE(infiltration_gmod$gmod, gravity_timesteps$gmod, s=c(2.5/6,2.5/6,1/6))
+best_fit = 1 - mNSE_value
+}
 
 ####################
 ## clean up memory
@@ -655,7 +668,7 @@ message(paste0("Finished parameterset: ",n_param))
 
 ## returning quality criteria:
 ## KGE
-return(kge_fit) 
+return(best_fit) 
 
 ## else statement, runs if otherdepth > mdepth
 # }
