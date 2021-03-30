@@ -1,21 +1,18 @@
-citHeader("To cite UmbrellaEffect in publications use:")
+citHeader("To cite gravityInf in publications use:")
 
 citEntry(entry = "Article",
-  title        = " XX ",
+  title        = "Field-scale subsurface flow processes inferred from continuous gravity monitoring during a sprinkling experiment",
   author       = personList(as.person("Marvin Reich"),
                    as.person("Michal Mikolay"),
                    as.person("Theresa Blume"),
                    as.person("Andreas Güntner")),
-  journal      = "Geophysical Journal International",
-  year         = "2017",
+  journal      = "Water Recources Research (in review)",
+  year         = "2021",
   volume       = "?",
   number       = "?",
   pages        = "??-??",
   url          = "??",
 
   textVersion  =
-  paste("Garrett Grolemund, Hadley Wickham (2011).",
-        "Dates and Times Made Easy with lubridate.",
-        "Journal of Statistical Software, 40(3), 1-25.",
-        "URL http://www.jstatsoft.org/v40/i03/.")
+  paste("")
 )

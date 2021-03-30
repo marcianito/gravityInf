@@ -1,12 +1,12 @@
-Repository containing scripts related to _Reich et al. (2019)_ publication
+Repository containing scripts related to _Reich et al. (2021)_ publication
 ======================================================================
 **Article:**  
-Marvin Reich<sup>1</sup>, Michal Mikolaj<sup>1</sup>, Theresa Blume<sup>1</sup>, Andreas Güntner<sup>1,4</sup>: **2019**. **_TITLE_**, published in: [???](http://link.com)
+Marvin Reich<sup>1</sup>, Michal Mikolaj<sup>1</sup>, Theresa Blume<sup>1</sup>, Andreas Güntner<sup>1,2</sup>: **2021**. **Field-scale subsurface flow processes inferred from continuous gravity monitoring during a sprinkling experiment**, (in review)
 
 **Affiliation**  
 <sup>1</sup>Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences, Section Hydrology, 14473 Potsdam, Germany  
 <sup>2</sup>University of Potsdam, Institute of Earth and Environmental Science, 14476 Potsdam, Germany
-> _Please cite this article when using here provided scripts_
+> _Please cite this article when using the here provided scripts_
 
 ## Description
 
@@ -18,6 +18,9 @@ maybe based on your own sprinkling / irrigation experiment and carry out simple 
 in 3D in the subsurface.
 An observed gravity time series is needed for the model in order to fit and thus identify
 the dominant infiltration process for your research area.
+
+A model functionality and limitations can be found in the above mentioned publication.
+
 
 For bug fixes, comments or further development please contact: mreich@posteo.de.
 
@@ -40,7 +43,7 @@ For bug fixes, comments or further development please contact: mreich@posteo.de.
 * r-base version 3.3.1
 * gravity R-package [HyGra](http://github.com/marcianito/HyGra) (for standard routines): `devtools::install_github("marcianito/HyGra")`
 * [ppso](http://github.com/TillF/ppso): `devtools::install_github("TillF/ppso")`
-* following R-packages: devtools, dplyr, ggplot2, reshape2, viridis, xts, zoo, doParralel, foreach, ..whatmore??..
+* following R-packages: devtools, dplyr, ggplot2, reshape2, viridis, xts, zoo, doParralel, foreach, ptinpoly, spacetime, data.table, automap
 * system libraries for devtools
 
 in debian install using: 
@@ -62,23 +65,29 @@ It is necessary to have a time series of observed gravity data (could be synthet
 ## Infiltration modeling procedure (computations)
 #### For more details, please look at the vignette or the corresponding help-files (within R).
 
-All changes should be done in a new file following (or a copy of) the reduction_example.r file.
+All changes should be done in a new file following (or a copy of) the infiltration_example.r file.
 
-(Step 2 is only explanatory for what the script does; no modifications necessary.)
-
-1. Setup: 
+General setup:
 	* _Directory and configs (input / output, file extentions, enable plotting)_
+
+Gravity grid setup: 
 	* _Gravimeter coordinates (x, y, z + height of sensor)_
-	* _Model domain (x and y extensions)_
-	* _Discretization and vertical model extent_
-	* __
-	* _Set correct file to load for DEM input_
+	* _Model domain (x and y extensions) and discretization_
+	* _Input file to load for DEM input_
 	* _Input file settings (data dimensions, order of data columns from input files)_
-	* _Input file names (DEM, observed gravity signal, .. etc !?)_
-2. Calculations: 
-	* _Construct surface grid_
-	* _Create gravity component grid_
-	* __
-	* _Plot all time series_
-5. Run the entire script and look at output files
+
+Inverse sprinkling modeling setup:
+	* _Input file of observed gravity signal_
+	* _Input file water intensity distribution_
+	* _Interpolation method_
+	* _Number of model runs_
+	* _Objective function_
+	* _Senario types for different layers_
+	* _Duration of sprinkling_
+	* _Select combined processes and/or lateral flow_
+	* _Allowed mass balance error_
+	* _Input water volume of experiment_
+	* _Model parameter values (min, max)_
+	* _Model parameter starting values_
+	* _Plotting options_
 

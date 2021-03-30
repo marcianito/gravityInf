@@ -28,18 +28,21 @@ print("This package will now run an infiltration scenario model, in order to fin
 ## developing
 # library(HyGra)
 library(devtools)
-setwd("/home/mreich/Dokumente/written/ResearchRepos/")
-load_all("UmbrellaEffect")
+setwd("path/to/local/R/package/locations/")
+load_all("HyGra")
 load_all("gravityInf")
+# alternatively, if installed via github, run the following 2 lines instead:
+library(HyGra)
+library(gravityInf)
+
 # create package
 # devtools::create("gravityInf")
 # create docu
 # library(roxygen2)
-# setwd("/home/mreich/Dokumente/written/ResearchRepos/gravityInf")
+# setwd("/home/mreich/Documents/written/ResearchRepos/gravityInf")
 # document()
 # install package locally
 # not working !? -> use load_all() above
-# install()
 
 ####################
 ## load libraries
@@ -48,7 +51,6 @@ library(zoo); Sys.setenv(TZ = "GMT")
 library(xts)
 library(dplyr)
 library(raster)
-# library(UmbrellaEffect)
 library(reshape2)
 library(ggplot2)
 library(viridis)
@@ -62,7 +64,7 @@ library(scales)
 library(hydroGOF)
 library(data.table)
 library(ppso)
-# for kriging
+#
 library(spacetime)
 library(sp)
 library(automap)
@@ -80,9 +82,9 @@ message("Initializing setup..checking input data..")
 # path should be absolute
 # (if not, it will be relative to the packages library path)
 # use "test-data" for dir_input to use supplied example files within the package
-# dir_input = "test-data"
-dir_input = "~/temp/GI/"
-dir_output = "~/temp/GI/"
+dir_input = "test-data"
+# dir_input = ""
+dir_output = "/path/to/output/storage/"
 # Output file type
 # set to "csv", if output should also be saved as .csv (besides .rData)
 output_type = ""
@@ -100,7 +102,7 @@ SG_SensorHeight = 1.05
 # SG_x = 4564082.00
 # SG_y = 5445669.70
 # SG_Z = 609.755
-# SG_SensorHeight = 1.5 
+# SG_SensorHeight = 1.05
 #
 ## Model domain
 # in [m]
@@ -183,7 +185,11 @@ gravityObservations_file = "iGrav006_obs_60sec.tsf"
 # in this case, infiltration parameters supplied in 'starting values' are used as model input
 inverse = TRUE
 # number of iterations of the algorithm
-model_runs = 10 
+model_runs = 10
+## objective function
+# options are: KGE or gini or mNSE
+# standard should be "mNSE"
+objFunction = "mNSE"
 # delete results and log-file of previous inverse model runs?
 # recommended to turn this on, experienced problems with the algoritum to 
 # deal with previous input
@@ -192,30 +198,31 @@ delete_prevRuns = TRUE
 #
 ## set infiltration model parameters
 #
+### model type (complexity)
+# use lateral flow?
+use_lateral_flow = T
+# combine two infiltration processes ?
+combine_processes = T
+#
 # set scenarios to include in optimization routine
-# use macro pore flow on top?
-use_macro = TRUE
-# 2 macro pore layers area only used if two_macro is set TRUE
-two_macro = F
-# further infiltration dynamics
-# possible options are: wetting front advancement (wfa), by-pass flow and perched water table
-# in the optimization, input is treated and dealt with in terms of real numbers
-# consequentially, discrete values as infiltration process descriptions have to be translated accordingly
-# including or exlucing a process is therefore realized via adjusting the boundary values of the following vector
-# Wfa = 1
-# perched water table = 2
-# by-pass flow = 3
-# the example setting therefore includes both Wfa and perched water table scenarios
-inf_dynamics_min = 1
-inf_dynamics_max = 3
+# options are: wfa, bypass, perched, macropores
+use_scenario = "macropores"
+use_scenario2 = "bypass"
 #
 ## modeling time (duration of sprinkling experiment)
 # [min]
 # precip_time = 360 
-precip_time = 10 
+precip_time = 10
+# precip_time = 3 
 ## water input per timestep
 # in [m³/min]
-water_vol_min = 0.035
+# water_vol_min = 0.035
+# water vol from experiment 3
+# dir_Infinput = "/home/hydro/mreich/Irrigation/input/"
+# exp3_meta = read.table(file=paste0(dir_Infinput, "Irrigation_precondition_dry"), skip= 5, nrows=8, dec=".", colClasses = character(), stringsAsFactors=F)
+exp3_meta = read.table(file=paste0(dir_input, "Irrigation_precondition_dry"), skip= 5, nrows=8, dec=".", colClasses = character(), stringsAsFactors=F)
+water_total_experiment = as.numeric(exp3_meta[6,2]) + as.numeric(exp3_meta[7,2]) # [m³]
+water_vol_min = water_total_experiment / precip_time #[m³/min]
 #
 # set permitted error for mass balance
 mb_permitted_error = 0.05
@@ -223,53 +230,37 @@ mb_permitted_error = 0.05
 ## Defines soil parameter boundaries
 # min and max values, defining the search boundaries for the optimization algorithm
 # Saturation deficit (dtheta)
-# macropore layer
-dtheta_macro_min = 0.05 #[VWC]
-dtheta_macro_max = 0.20 #[VWC]
-dtheta_macro2_min = 0.02 #[VWC]
-dtheta_macro2_max = 0.10 #[VWC]
+# for selected process 1
+dtheta_min = 0.05 #[VWC]
+dtheta_max = 0.25 #[VWC]
+# for selected process 2
+dtheta2_min = 0.05 #[VWC]
+dtheta2_max = 0.25 #[VWC]
 # Depth of processes
 # in the case of no macro pore flow layers, the parameter 'mdepth' will be used for
 # the depth of the single infiltration processes
-mdepth_min = -0.5 #[m]
-mdepth_max = -0.1 #[m]
-mdepth2_min = -1.5 #[m]
-mdepth2_max = -0.2 #[m]
-# secondary infiltration process
-# vertical bounaries
-# if use_macro is set FALSE, this will be the only process used
-dtheta_other_min = 0.02 #[VWC]
-dtheta_other_max = 0.25 #[VWC]
-# other infiltration processes ("pipe") are now spatially DIRECTLY connected below the macro pore layer
-# if other is desired (e.g. gap between macro and pipe), this has to be activated again !
-# with the following lines uncommented, a gap between macro and pipe layer is allowed
-# break up criteria when pipedepth < mdepth is implemented in objective function (inf_model_3d)
-# pipedepth_min = 0.2 #[m]
-# pipedepth_max = 4.5 #[m]
-pdepth_min = -2
-pdepth_max = -1.0
-#
+# for selected process 1
+pdepth_min = -1.5 #[m]
+pdepth_max = -0.1 #[m]
+# for selected process 2
+pdepth2_min = -4.9 #[m]
+pdepth2_max = -1.5 #[m]
 # min max values for dividing water into horizontal / lateral parts (factor)
 # in [%]
 latflow_fac_min = 0.0 #[1]
 latflow_fac_max = 1.0 #[1]
 #
 # Starting values of above set infiltration model parameters
-dtheta_macro_start = 0.1
-dtheta_macro2_start = 0.05
-mdepth_start = -0.3
-mdepth2_start = -1.0
-dtheta_other_start = 0.05
-# pipedepth_start = 0.4
+dtheta_start = 0.15
+dtheta2_start = 0.15
+pdepth_start = -0.5
+pdepth2_start = -1.5
 latflow_fac_start = 0.4
-# infiltration process
-inf_dynamics_start = 2
-# other process starting depth
-pdepth_start = -1.5
 #
 ## plotting options
-plot_interval = precip_time / 10
+plot_interval = precip_time / 6
 plot_transect_loc = SG_y 
+#
 #
 message("done.")
 ## end SETUP
@@ -296,67 +287,19 @@ SG_z = SG_Z + SG_SensorHeight
 SGloc = data.frame(x=SG_x, y=SG_y, z=SG_z)
 #
 #########################################
-## Generate cropped DEM and surface grid
-#########################################
-message("Generate cropped DEM and surface grid..")
-#
-surface_grid = surface_grid(
-            DEM = DEM_input_file,
-            grid_domain_x = sprinklingArea_x,
-            grid_domain_y = sprinklingArea_y,
-            grid_discretization = grid3d_discr,
-            input_dir = dir_input,
-            output_dir = dir_output
-            # , sep = "a", etc.
-)
-#
-if(!is.null(surface_grid)){
-  if(plot_data){
-    ggplot(surface_grid, 
-           aes(x=x, y=y)) + 
-           geom_tile(aes(fill = z))
-  }
-}
-#
-message("done.")
-#########################################
-# Generate 3d gravity component grid 
+## Create Gravity Grid and correct for SG pillar 
 #########################################
 message("Generate 3d gravity component grid..")
-#
-gravity_component_grid3d = gravity_comp_grid(
-            surface = surface_grid,
-            SG_coordinates = SGloc,
-            grid_discretization = grid3d_discr,
-            grid_depth = grid3d_depth,
+gravity_component_grid3d = create_singleGravityGrid(
+            DEM_input_file = DEM_input_file,
+            DEM_dir = dir_input,
+            SGloc = SGloc,
+            grid_discretizations = grid3d_discr,
+            grid_vertical = grid3d_depth,
             range_coords_x = sprinklingArea_x,
-            range_coords_y = sprinklingArea_y
-)
-#
-if(plot_data){
-  ggplot(gravity_component_grid3d, 
-         aes(x=x, y=y)) + 
-         geom_tile(aes(fill = z))
-         # geom_point(aes(color = z))
-}
-#
-message("done.")
-#########################################
-## Correct gravity component grid for SG pillar 
-#########################################
-message("Removing SG pillar from gravity component grid..")
-#
-gravity_component_grid3d = correct_SGpillar(
-            gravity_comp3d = gravity_component_grid3d,
-            # Pillar_x = NA,
-            # Pillar_y = NA,
-            # Pillar_z = NA,
-            correct_radius = thres_radius,
-            correct_depth = thres_depth,
-            SG_X = SG_x,
-            SG_Y = SG_y #,
-            # grid_discretization = NA
-)
+            range_coords_y = sprinklingArea_y,
+            correct_SGpillar = c(thres_radius, thres_depth)
+            )
 #
 # save grid
 save(gravity_component_grid3d, file = paste0(dir_output, "gravity_component_grid3d.rData"))
@@ -370,7 +313,7 @@ if(plot_data){
                   grid_discretization = grid3d_discr
 )
 }
-#
+
 message("done.")
 #########################################
 ## Create water intensity distribution grid
@@ -399,7 +342,7 @@ if(plot_data){
 #
 # save grid
 save(Intensity_distribution_interpolated, file = paste0(dir_output, "Intensity_distribution_interpolated.rData"))
-#
+
 message("done.")
 #########################################
 ## Run infiltration model
@@ -422,78 +365,164 @@ configfile = data.frame(dir_input,
                         discr_y = grid3d_discr$y,
                         discr_z = grid3d_discr$z,
                         mb_permitted_error,
-                        use_macro,
-                        two_macro,
+                        use_scenario,
+                        use_scenario2,
                         model_runs,
                         plot_interval,
                         plot_transect_loc,
+                        objFunction,
                         stringsAsFactors=FALSE)
 save(configfile, file=paste0(dir_output, "configfile.rdata"))
 #
 ## run model in conversion or inversion mode
 print("Running infiltration model..")
 #
-
-if(!inverse){
-  print("Model is run in conversion mode.")
-  model_result = run_model_conversion(
-              dtheta_macro = dtheta_macro_start,
-              dtheta_macro2 = dtheta_macro2_start,
-              mdepth = mdepth_start,
-              mdepth2 = mdepth2_start,
-              dtheta_other = dtheta_other_start,
-              latflow_fac = latflow_fac_start,
-              inf_dynamics = inf_dynamics_start,
-              pdepth = pdepth_start,
-              output_dir = dir_output
-              )
-#
-}else{
-## Run optimization algorithm
-  print("Model is run in inversion mode.")
-  print("Run optimization algorithm..")
-  print("..this will take some time..")
- # 
-  ## run model within optimization algorithm
-  # for changing optimization function additional parameters, please see ?optim_dds
-st = Sys.time()
-  model_result = run_model_inversion(
-              dtheta_macro_min = dtheta_macro_min,
-              dtheta_macro_max = dtheta_macro_max,
-              dtheta_macro2_min = dtheta_macro2_min,
-              dtheta_macro2_max = dtheta_macro2_max,
-              dtheta_other_min = dtheta_other_min,
-              dtheta_other_max = dtheta_other_max,
-              mdepth_min = mdepth_min,
-              mdepth_max = mdepth_max,
-              mdepth2_min = mdepth2_min,
-              mdepth2_max = mdepth2_max,
-              latflow_fac_min = latflow_fac_min,
-              latflow_fac_max = latflow_fac_max,
-              inf_dynamics_min = inf_dynamics_min,
-              inf_dynamics_max = inf_dynamics_max,
-              pdepth_min = pdepth_min,
-              pdepth_max = pdepth_max,
-              dtheta_macro_start = dtheta_macro_start,
-              dtheta_macro2_start = dtheta_macro2_start,
-              mdepth_start = mdepth_start,
-              mdepth2_start = mdepth2_start,
-              dtheta_other_start = dtheta_other_start,
-              latflow_fac_start = latflow_fac_start,
-              inf_dynamics_start = inf_dynamics_start,
-              pdepth_start = pdepth_start,
-              input_dir = dir_input,
-              output_dir = dir_output,
-              inner_inum = 1,
-              del_prev = delete_prevRuns
-  )
-#
-en = Sys.time()
-time_elapsed = en - st
-
-  print("Finished optimization.")
-  print(time_elapsed)
-# end of inversion / conversion mode infiltration model runs
+## use lateral flow module in model?
+# if yes:
+if(use_lateral_flow){
+  print("Module for lateral flow was selected")
+  if(combine_processes){
+  print("Module for combined infiltration processes was selected")
+  if(!inverse){
+    print("Model is run in conversion mode.")
+    model_result = run_model_conversion_combinedProcPP(
+                dtheta = dtheta_start,
+                latflow_fac = latflow_fac_start,
+                pdepth = pdepth_start,
+                output_dir = dir_output
+                )
+  #
+  }else{
+  ## Run optimization algorithm
+    print("Model is run in inversion mode.")
+    print("Run optimization algorithm..")
+    print("..this will take some time..")
+   # 
+    ## run model within optimization algorithm
+    # for changing optimization function additional parameters, please see ?optim_dds
+    model_result = run_model_inversion_combinedProcPP(
+                dtheta_min = dtheta_min,
+                dtheta_max = dtheta_max,
+                dtheta2_min = dtheta2_min,
+                dtheta2_max = dtheta2_max,
+                latflow_fac_min = latflow_fac_min,
+                latflow_fac_max = latflow_fac_max,
+                pdepth_min = pdepth_min,
+                pdepth_max = pdepth_max,
+                pdepth2_min = pdepth2_min,
+                pdepth2_max = pdepth2_max,
+                dtheta_start = dtheta_start,
+                dtheta2_start = dtheta2_start,
+                latflow_fac_start = latflow_fac_start,
+                pdepth_start = pdepth_start,
+                pdepth2_start = pdepth2_start,
+                input_dir = dir_input,
+                output_dir = dir_output,
+                inner_inum = 1,
+                del_prev = delete_prevRuns
+    )
+  ## run FINAL model, with optimized parameter values
+    model_final = inf_model_3d_combinedProcLatFlow_final(
+                                              param_1 = as.numeric(model_result$dtheta),
+                                              param_2 = as.numeric(model_result$dtheta2),
+                                              param_3 = as.numeric(model_result$pdepth),
+                                              param_4 = as.numeric(model_result$pdepth2),
+                                              param_5 = as.numeric(model_result$latflow)
+                                                )
+    print(paste0("final performance measure: ", model_final))
+    message(paste0("final performance measure: ", model_final))
+  }
+  }else{
+  print("Module for single infiltration process was selected")
+  if(!inverse){
+    print("Model is run in conversion mode.")
+    model_result = run_model_conversion_singleProcPP(
+                dtheta = dtheta_start,
+                latflow_fac = latflow_fac_start,
+                pdepth = pdepth_start,
+                output_dir = dir_output
+                )
+  #
+  }else{
+  ## Run optimization algorithm
+    print("Model is run in inversion mode.")
+    print("Run optimization algorithm..")
+    print("..this will take some time..")
+   # 
+    ## run model within optimization algorithm
+    # for changing optimization function additional parameters, please see ?optim_dds
+    model_result = run_model_inversion_singleProcPP(
+                dtheta_min = dtheta_min,
+                dtheta_max = dtheta_max,
+                latflow_fac_min = latflow_fac_min,
+                latflow_fac_max = latflow_fac_max,
+                pdepth_min = pdepth_min,
+                pdepth_max = pdepth_max,
+                dtheta_start = dtheta_start,
+                latflow_fac_start = latflow_fac_start,
+                pdepth_start = pdepth_start,
+                input_dir = dir_input,
+                output_dir = dir_output,
+                inner_inum = 1,
+                del_prev = delete_prevRuns
+    )
+  ## run FINAL model, with optimized parameter values
+    model_final = inf_model_3d_singleProcLatFlow_final(
+                                              param_1 = as.numeric(model_result$dtheta),
+                                              param_2 = as.numeric(model_result$pdepth),
+                                              param_3 = as.numeric(model_result$latflow)
+                                                )
+    print(paste0("final performance measure: ", model_final))
+    message(paste0("final performance measure: ", model_final))
+  }
+  }
+}else{ # if not using lateral flow:
+  print("Lateral flow is NOT considered")
+  if(!inverse){
+    print("Model is run in conversion mode.")
+    model_result = run_model_conversion_singleProcPP(
+                dtheta = dtheta_start,
+                pdepth = pdepth_start,
+                output_dir = dir_output
+                )
+  #
+  }else{
+  ## Run optimization algorithm
+    print("Model is run in inversion mode.")
+    print("Run optimization algorithm..")
+    print("..this will take some time..")
+   # 
+    ## run model within optimization algorithm
+    # for changing optimization function additional parameters, please see ?optim_dds
+    # time keeping
+    st = Sys.time()
+    model_result = run_model_inversion_singleProcPP(
+                dtheta_min = dtheta_min,
+                dtheta_max = dtheta_max,
+                pdepth_min = pdepth_min,
+                pdepth_max = pdepth_max,
+                dtheta_start = dtheta_start,
+                pdepth_start = pdepth_start,
+                input_dir = dir_input,
+                output_dir = dir_output,
+                inner_inum = 1,
+                del_prev = delete_prevRuns
+    )
+  #
+  en = Sys.time()
+  time_elapsed = en - st
+    print("Finished optimization.")
+    print(time_elapsed)
+  # end of inversion / conversion mode infiltration model runs
+  ## run FINAL model, with optimized parameter values
+    model_final = inf_model_3d_singleProc_final(
+                                              param_1 = as.numeric(model_result$dtheta),
+                                              param_2 = as.numeric(model_result$pdepth)
+                                                )
+    print(paste0("final performance measure: ", model_final))
+    message(paste0("final performance measure: ", model_final))
+  }
+# end of decision: lateral flow module: yes or no
 }
 #
 # save model data (parameters in- and output)
@@ -519,7 +548,7 @@ if(!inverse){
 # plot LAST (optimized) model run scenario
   plot_gravity_responses(
               gravity_obs = gravityObservations_file,
-              gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_", (n_param - 1), ".rData"),
+              gravity_mod = paste0("GravityResponse_Infiltration_model_final.rData"),
               # gravity_mod = paste0("model_output/GravityResponse_Infiltration_model_9.rData"),
               input_dir = dir_input,
               output_dir = dir_output
@@ -547,7 +576,7 @@ if(!inverse){
   )
 }else{
   plot_transects_2d(
-              soilmoisture_mod = paste0("model_output/Infiltration_model_output_", (n_param - 1), ".rData"),
+              soilmoisture_mod = paste0("Infiltration_model_output_final.rData"),
               # soilmoisture_mod = paste0("model_output/Infiltration_model_output_9.rData"),
               plot_int = plot_interval,
               y_pos = SG_y,
@@ -562,7 +591,7 @@ if(!inverse){
 }
 
 # remove iteration parameter for inner optimization function calls
-rm(n_param)
+# rm(n_param)
 
 #########################################
 ## end CALCULATIONS
@@ -575,32 +604,6 @@ message("If you use this software in your publication, please cite this package.
         Information can be obtained using citation()")
 
 
-##########
-### prepare input TS data
-
-# tt = load(file=paste0(dir_input, "igrav_raw_data_exp3.rdata"))
-# igrav_exp3
-# write.table(intensities_measured, file=paste0(dir_output, IntensityDistribution_file), row.names=F)
-
-# sm = read_data(soilMoisture_input_file, dir_input)
-# sm_ts = unique(sm$datetime)
-# gg = read_data(gravityObservations_input_file, dir_input)
-# gg_ts = unique(gg$datatime)
-# sm = sm %>% dplyr::filter(datetime != 0)
-# change_dates = data.frame(
-#                           datetime = sm_ts[2:745],
-#                           datatime = gg_ts)
-# sm_mod = left_join(change_dates, sm)
-## !! check if z has NEGATIVE COORDINATES DOWNWARDS !!
-# SoilMoisture_input_1d = data.frame(
-#                                    datetime = sm_mod$datatime,
-#                                    z = sm_mod$z,
-#                                    data = sm_mod$value)
-# write.table(SoilMoisture_input_1d, file="SMdata_TS_1d.csv", row.names=F)
-# save(SoilMoisture_input_1d, file="SMdata_TS_1d.rdata")
-# getwd()
-
-# tt = read_data(data_in = gravityObservations_input_file,
-#                data_dir = dir_input,
-#                dat_tsf = data_tsf
-# )
+## close R
+print("Closing R")
+mpi.quit()
