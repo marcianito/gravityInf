@@ -1,12 +1,18 @@
-Repository containing scripts related to _Reich et al. (2021)_ publication
+gravityInf - inverse hydrological modeling based on gravity observations to evaluate dominant infiltration and subsurface re-distribution processes 
 ======================================================================
-**Article:**  
+
+
+Related to **Article:**  
 Marvin Reich<sup>1</sup>, Michal Mikolaj<sup>1</sup>, Theresa Blume<sup>1</sup>, Andreas Güntner<sup>1,2</sup>: **2021**. **Field-scale subsurface flow processes inferred from continuous gravity monitoring during a sprinkling experiment**, (in review)
 
-**Affiliation**  
-<sup>1</sup>Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences, Section Hydrology, 14473 Potsdam, Germany  
-<sup>2</sup>University of Potsdam, Institute of Earth and Environmental Science, 14476 Potsdam, Germany
-> _Please cite this article when using the here provided scripts_
+## Citation
+The recommended citation for gravityInf is: (You can find the BibTeX snippet in the
+[`CITATION` file](CITATION.bib)):
+
+> Reich, Marvin (2021). gravityInf - inverse hydrological modeling based on gravity observations to evaluate dominant infiltration and subsurface re-distribution processes,  v1.0. GFZ Data Services. DOI: https://doi.org/10.5880/GFZ.4.4.2021.002  
+
+
+[![DOI](https://img.shields.io/badge/DOI-10.5880%2Fwsm.2021.002-blue.svg)](https://doi.org/10.5880/GFZ.4.4.2021.002)
 
 ## Description
 
@@ -94,3 +100,16 @@ All changes should be done in a new file following (or a copy of) the infiltrati
 * Model parameter starting values
 * Plotting options
 
+## License 
+GNU General Public License, Version 3, 29 June 2007
+
+Copyright 2021 Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences, Potsdam, Germany
+
+gravityInf is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+gravityInf is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+## Contact
+Marvin Reich;
+mreich@posteo.de
+mreich@gfz-potsdam.de

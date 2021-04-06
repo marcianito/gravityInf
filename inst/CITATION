@@ -1,12 +1,9 @@
 citHeader("To cite gravityInf in publications use:")
 
-citEntry(entry = "Article",
-  title        = "Field-scale subsurface flow processes inferred from continuous gravity monitoring during a sprinkling experiment",
+citEntry(entry = "Software",
+  title        = "gravityInf - inverse hydrological modeling based on gravity observations to evaluate dominant infiltration and subsurface re-distribution processes",
   author       = personList(as.person("Marvin Reich"),
-                   as.person("Michal Mikolay"),
-                   as.person("Theresa Blume"),
-                   as.person("Andreas Güntner")),
-  journal      = "Water Recources Research (in review)",
+  journal      = "GFZ Data Services",
   year         = "2021",
   volume       = "?",
   number       = "?",
@@ -14,5 +11,6 @@ citEntry(entry = "Article",
   url          = "??",
 
   textVersion  =
-  paste("")
+  paste("Reich, Marvin (2021): gravityInf - inverse hydrological modeling based on gravity observations to evaluate 
+dominant infiltration and subsurface re-distribution processes. GFZ Data Services. https://doi.org/10.5880/GFZ.4.4.2021.002")
 )
